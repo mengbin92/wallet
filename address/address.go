@@ -12,13 +12,20 @@ type BTCAddress struct {
 	key *btcutil.WIF
 }
 
-func NewBTCAddress(net *chaincfg.Params) (*BTCAddress, error) {
+var (
+	networks = map[string]*chaincfg.Params{
+		"mainnet": &chaincfg.MainNetParams,
+		"testnet": &chaincfg.TestNet3Params,
+	}
+)
+
+func NewBTCAddress(network string) (*BTCAddress, error) {
 	privateKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate private key")
 	}
 
-	wif, err := btcutil.NewWIF(privateKey, net, true)
+	wif, err := btcutil.NewWIF(privateKey, networks[network], true)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate WIF")
 	}
@@ -29,8 +36,8 @@ func NewBTCAddress(net *chaincfg.Params) (*BTCAddress, error) {
 }
 
 // GenP2PKAddress Generates the BTC Pay-to-Pubkey address
-func (k *BTCAddress) GenP2PKAddress(net *chaincfg.Params) (string, error) {
-	address, err := btcutil.NewAddressPubKey(k.key.SerializePubKey(), net)
+func (k *BTCAddress) GenP2PKAddress(network string) (string, error) {
+	address, err := btcutil.NewAddressPubKey(k.key.SerializePubKey(), networks[network])
 	if err != nil {
 		return "", errors.Wrap(err, "failed to generate P2PK address")
 	}
@@ -38,8 +45,8 @@ func (k *BTCAddress) GenP2PKAddress(net *chaincfg.Params) (string, error) {
 }
 
 // GenP2PKHAddress Generates the BTC Pay-to-Pubkey-Hash
-func (k *BTCAddress) GenP2PKHAddress(net *chaincfg.Params) (string, error) {
-	address, err := btcutil.NewAddressPubKeyHash(btcutil.Hash160(k.key.SerializePubKey()), net)
+func (k *BTCAddress) GenP2PKHAddress(network string) (string, error) {
+	address, err := btcutil.NewAddressPubKeyHash(btcutil.Hash160(k.key.SerializePubKey()), networks[network])
 	if err != nil {
 		return "", errors.Wrap(err, "failed to generate P2PKH address")
 	}
@@ -47,8 +54,8 @@ func (k *BTCAddress) GenP2PKHAddress(net *chaincfg.Params) (string, error) {
 }
 
 // GenBech32Address Generates the BTC SegWit address
-func (k *BTCAddress) GenBech32Address(net *chaincfg.Params) (string, error) {
-	address, err := btcutil.NewAddressWitnessPubKeyHash(btcutil.Hash160(k.key.SerializePubKey()), net)
+func (k *BTCAddress) GenBech32Address(network string) (string, error) {
+	address, err := btcutil.NewAddressWitnessPubKeyHash(btcutil.Hash160(k.key.SerializePubKey()), networks[network])
 	if err != nil {
 		return "", errors.Wrap(err, "failed to generate P2PKH address")
 	}
