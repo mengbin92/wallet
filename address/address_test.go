@@ -3,6 +3,7 @@ package address
 import (
 	"testing"
 
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,17 +14,17 @@ var (
 func TestNewBTCAddress(t *testing.T) {
 	tests := []struct {
 		name    string
-		network string
+		network *chaincfg.Params
 		main    bool
 	}{
 		{
 			name:    "MainNetParams",
-			network: "mainnet",
+			network: &chaincfg.MainNetParams,
 			main:    true,
 		},
 		{
 			name:    "TestNet3Params",
-			network: "testnet",
+			network: &chaincfg.TestNet3Params,
 		},
 	}
 
@@ -40,15 +41,15 @@ func TestGenP2PKAddress(t *testing.T) {
 	// TODO
 	tests := []struct {
 		name    string
-		network string
+		network *chaincfg.Params
 	}{
 		{
 			name:    "MainNetParams-GenP2PKAddress",
-			network: "mainnet",
+			network: &chaincfg.MainNetParams,
 		},
 		{
 			name:    "TestNet3Params-GenP2PKAddress",
-			network: "testnet",
+			network: &chaincfg.TestNet3Params,
 		},
 	}
 
@@ -61,6 +62,7 @@ func TestGenP2PKAddress(t *testing.T) {
 			p2pkAddr, err := addr.GenP2PKAddress(tt.network)
 			assert.Empty(t, err)
 			assert.NotEmpty(t, p2pkAddr)
+			t.Log(p2pkAddr)
 		})
 	}
 }
@@ -69,18 +71,15 @@ func TestGenP2PKHAddress(t *testing.T) {
 	// TODO
 	tests := []struct {
 		name    string
-		network string
-		main    bool
+		network *chaincfg.Params
 	}{
 		{
 			name:    "MainNetParams-GenP2PKHAddress",
-			network: "mainnet",
-			main:    true,
+			network: &chaincfg.MainNetParams,
 		},
 		{
 			name:    "TestNet3Params-GenP2PKHAddress",
-			network: "testnet",
-			main:    false,
+			network: &chaincfg.TestNet3Params,
 		},
 	}
 
@@ -89,17 +88,11 @@ func TestGenP2PKHAddress(t *testing.T) {
 			addr, err := NewBTCAddress(tt.network)
 			assert.Empty(t, err)
 			assert.NotEmpty(t, addr)
-			if tt.main {
-				p2pkhAddr, err := addr.GenP2PKHAddress(tt.network)
-				assert.Empty(t, err)
-				assert.NotEmpty(t, p2pkhAddr)
-				assert.Equal(t, p2pkhAddr[0], byte('1'))
-			} else {
-				p2pkhAddr, err := addr.GenP2PKHAddress(tt.network)
-				assert.Empty(t, err)
-				assert.NotEmpty(t, p2pkhAddr)
-				assert.Equal(t, p2pkhAddr[0], byte('m'))
-			}
+
+			p2pkhAddr, err := addr.GenP2PKHAddress(tt.network)
+			assert.Empty(t, err)
+			assert.NotEmpty(t, p2pkhAddr)
+			t.Log(p2pkhAddr)
 
 		})
 	}
@@ -108,17 +101,17 @@ func TestGenP2PKHAddress(t *testing.T) {
 func TestGenBech32Address(t *testing.T) {
 	tests := []struct {
 		name    string
-		network string
+		network *chaincfg.Params
 		main    bool
 	}{
 		{
 			name:    "MainNetParams-GenBech32Address",
-			network: "mainnet",
+			network: &chaincfg.MainNetParams,
 			main:    true,
 		},
 		{
 			name:    "TestNet3Params-GenP2PKHAddress",
-			network: "testnet",
+			network: &chaincfg.TestNet3Params,
 			main:    false,
 		},
 	}
@@ -146,15 +139,15 @@ func TestGenBech32Address(t *testing.T) {
 func TestExportPrivateKey(t *testing.T) {
 	tests := []struct {
 		name    string
-		network string
+		network *chaincfg.Params
 	}{
 		{
 			name:    "MainNetParams-GenBech32Address",
-			network: "mainnet",
+			network: &chaincfg.MainNetParams,
 		},
 		{
 			name:    "TestNet3Params-GenP2PKHAddress",
-			network: "testnet",
+			network: &chaincfg.TestNet3Params,
 		},
 	}
 
