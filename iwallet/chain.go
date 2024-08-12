@@ -11,4 +11,6 @@ type IChainPower interface {
 	GetBlockHash(int64) (string, error)
 	// get ChainPower name
 	Source() string
+	// get balance by address from blockchain
+	GetBalanceByAddress(string) (int64, error)
 }

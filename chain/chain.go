@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	networks = map[string]chaincfg.Params{
-		"mainnet": chaincfg.MainNetParams,
-		"testnet": chaincfg.TestNet3Params,
+	networks = map[string]*chaincfg.Params{
+		"mainnet": &chaincfg.MainNetParams,
+		"testnet": &chaincfg.TestNet3Params,
 	}
+	decimals = 10e8
 )
 
 type ChainPower struct {
@@ -79,6 +80,50 @@ func (c *ChainPower) GetBlock(blkHashStr string) (*btcutil.Block, error) {
 	return btcutil.NewBlock(msgBlk), nil
 }
 
-func (c *ChainPower) Source() string{
+func (c *ChainPower) Source() string {
 	return "btcd"
+}
+
+func (c *ChainPower) GetBalanceByAddress(addr string) (int64, error) {
+	// 解析比特币地址
+	address, err := btcutil.DecodeAddress(addr, networks[c.network])
+	if err != nil {
+		return 0, errors.Wrap(err, "解析比特币地址失败")
+	}
+
+	// 使用SearchRawTransactionsVerbose获取与地址相关的所有交易
+	transactions, err := c.client.SearchRawTransactionsVerbose(address, 0, 100, true, false, nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "获取与地址相关的所有交易失败")
+	}
+
+	amount := int64(0)
+	// 遍历所有交易
+	for _, tx := range transactions {
+		// 将交易ID字符串转换为链哈希对象
+		txid, err := chainhash.NewHashFromStr(tx.Txid)
+		if err != nil {
+			return 0, errors.Wrap(err, "将交易ID字符串转换为链哈希对象失败")
+		}
+
+		// 遍历交易的输出
+		for _, vout := range tx.Vout {
+			// 检查输出地址是否是我们关心的地址
+			if vout.ScriptPubKey.Address != addr {
+				continue
+			}
+
+			// 使用GetTxOut方法获取交易输出，确认该输出是否未花费
+			utxo, err := c.client.GetTxOut(txid, vout.N, true)
+			if err != nil {
+				return 0, errors.Wrap(err, "获取交易输出失败")
+			}
+
+			// 如果交易输出未花费，则累加金额
+			if utxo != nil {
+				amount += int64(utxo.Value * decimals)
+			}
+		}
+	}
+	return amount, nil
 }
