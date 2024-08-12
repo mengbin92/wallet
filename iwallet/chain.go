@@ -4,11 +4,11 @@ import "github.com/btcsuite/btcd/btcutil"
 
 type IChainPower interface {
 	// get block from blockchain
-	GetBlock(network, blkHash string) (*btcutil.Block, error)
+	GetBlock(blkHash string) (*btcutil.Block, error)
 	// get block count from blockchain
-	GetBlockCount(string) (uint64, error)
+	GetBlockCount() (int64, error)
 	// get block hash from blockchain
-	GetBlockHash(string, uint64) (string, error)
+	GetBlockHash(int64) (string, error)
 	// get ChainPower name
 	Source() string
 }

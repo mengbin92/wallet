@@ -1,2 +1,12 @@
 syntax = "proto3";
+package config;
 
+option go_package = "./;config";
+
+message Chain{
+    string rpc_user = 1;
+    string rpc_password = 2;
+    string rpc_endpoint = 3;
+    string rpc_cert = 4;
+    string network = 5;
+}
