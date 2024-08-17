@@ -64,19 +64,19 @@ func (k *BTCAddress) GenBech32Address(param *chaincfg.Params) (string, error) {
 }
 
 func (k *BTCAddress) ExportPrivateKey(pwd string) (string, error) {
-	encryptData, err := utils.AesEncrypt([]byte(k.key.String()), pwd)
+	encryptData, err := utils.BIP38Encrypt(k.key.String(), pwd)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to encrypt private key")
 	}
 	return encryptData, nil
 }
 
-func (k *BTCAddress) LoadPrivateKey(encryptStr, pwd string) error {
-	decryptData, err := utils.AesDecrypt(encryptStr, pwd)
+func (k *BTCAddress) ImportPrivateKey(encryptStr, pwd string) error {
+	decryptData, err := utils.BIP38Decrypt(encryptStr, pwd,"mainnet")
 	if err != nil {
 		return errors.Wrap(err, "failed to decrypt private key")
 	}
-	wif, err := btcutil.DecodeWIF(string(decryptData))
+	wif, err := btcutil.DecodeWIF(decryptData)
 	if err != nil {
 		return errors.Wrap(err, "failed to decode WIF")
 	}
