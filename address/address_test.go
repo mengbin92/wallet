@@ -161,7 +161,7 @@ func TestExportPrivateKey(t *testing.T) {
 			assert.NotEmpty(t, encryptStr)
 
 			newAddress := &BTCAddress{}
-			err = newAddress.LoadPrivateKey(encryptStr, pwd)
+			err = newAddress.ImportPrivateKey(encryptStr, pwd)
 			assert.Empty(t, err)
 
 			p2pkhAddr, _ := addr.GenBech32Address(tt.network)
