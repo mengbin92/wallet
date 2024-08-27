@@ -30,7 +30,8 @@ func (c *WalletCommand) createMnemonic() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create",
 		Short: "Create a new mnemonic and save it to file",
-		Long:  "Create a new mnemonic and save it to file, example: ./wallet mnemonic create ./mnemonic.txt password",
+		Long:  `Create a new mnemonic and save it to file, example: ./wallet mnemonic create ./mnemonic.txt password
+		The password is optional, if not provided, the program will generate a random password.`,
 		RunE:  c.runCreateMnemonic,
 	}
 }
@@ -59,7 +60,7 @@ func (c *WalletCommand) loadMnemonic() *cobra.Command {
 func (c *WalletCommand) runCreateMnemonic(cmd *cobra.Command, args []string) error {
 	fmt.Println("Create a new mnemonic")
 	if len(args) < 1 {
-		return errors.New("Please provide the file path to save the mnemonic, e.g. ./mnemonic.txt")
+		return errors.New("Please provide the file path to save the mnemonic, e.g. ./mnemonic.txt password")
 	}
 
 	mnemonic, err := kms.GenMnemonic()
