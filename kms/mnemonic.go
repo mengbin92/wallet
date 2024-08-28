@@ -46,13 +46,13 @@ func GenMasterKey(mnemonic, password, network string) (*hdkeychain.ExtendedKey, 
 
 // DeriveChildKey 依据BIP-44路径生成子秘钥
 // m / purpose' / coin' / account' / change / address_index
-func DeriveChildKey(masterKey *hdkeychain.ExtendedKey, account, address_index uint32) (*hdkeychain.ExtendedKey, error) {
+func DeriveChildKey(masterKey *hdkeychain.ExtendedKey, coin, account, address_index uint32) (*hdkeychain.ExtendedKey, error) {
 	purpose, err := masterKey.Derive(hdkeychain.HardenedKeyStart + 44)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to derive purpose key")
 	}
 
-	coinType, err := purpose.Derive(hdkeychain.HardenedKeyStart + 0)
+	coinType, err := purpose.Derive(hdkeychain.HardenedKeyStart + coin)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to derive coinType key")
 	}
@@ -75,9 +75,9 @@ func DeriveChildKey(masterKey *hdkeychain.ExtendedKey, account, address_index ui
 }
 
 // GetWIFFromExtendedKey 从扩展秘钥获取Wallet Import Format (WIF)
-func GetWIFFromExtendedKey(extendedKey *hdkeychain.ExtendedKey,network string) (*btcutil.WIF, error) {
-	privateKey,err := extendedKey.ECPrivKey()
-	if err != nil{
+func GetWIFFromExtendedKey(extendedKey *hdkeychain.ExtendedKey, network string) (*btcutil.WIF, error) {
+	privateKey, err := extendedKey.ECPrivKey()
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to get private key")
 	}
 
