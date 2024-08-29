@@ -22,4 +22,5 @@ go.work
 go.work.sum
 
 
-mnemonic.key
+key.key
+btc_wallet
