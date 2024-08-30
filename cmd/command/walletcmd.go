@@ -38,6 +38,8 @@ func (c *WalletCommand) init() {
 	c.rootCmd.AddCommand(c.mnemonicCmd())
 	// key subcommand
 	c.rootCmd.AddCommand(c.keyCmd())
+	// address subcommand
+	c.rootCmd.AddCommand(c.addressCmd())
 }
 
 // Execute 方法执行 WalletCommand 的根命令
