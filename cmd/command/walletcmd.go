@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -34,12 +35,16 @@ func (c *WalletCommand) init() {
 		Args:  cobra.MinimumNArgs(1),
 	}
 
+	// version subcommand
+	c.rootCmd.AddCommand(c.versionCmd())
 	// mnemonics subcommand
 	c.rootCmd.AddCommand(c.mnemonicCmd())
 	// key subcommand
 	c.rootCmd.AddCommand(c.keyCmd())
 	// address subcommand
 	c.rootCmd.AddCommand(c.addressCmd())
+	// balance subcommand
+	c.rootCmd.AddCommand(c.balanceCmd())
 }
 
 // Execute 方法执行 WalletCommand 的根命令
@@ -50,4 +55,15 @@ func (c *WalletCommand) Execute() error {
 // GenMasterKey 方法生成主密钥
 func (c *WalletCommand) genMasterKey(password, network string) (*hdkeychain.ExtendedKey, error) {
 	return kms.GenMasterKey(c.mnemonic, password, network)
+}
+
+func (c *WalletCommand) versionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show version",
+		Long:  "Show version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("%s version: %s\n", cmdName, version)
+		},
+	}
 }
