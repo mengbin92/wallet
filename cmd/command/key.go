@@ -29,8 +29,8 @@ func (c *WalletCommand) keyCmd() *cobra.Command {
 func (c *WalletCommand) keyCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create",
-		Short: "Create a new key, example: ./wallet key create ./key.key password network account address_index",
-		Long:  "Create a new key, example: ./wallet key create ./key.key password network account address_index",
+		Short: "Create a new key, example: ./wallet key create ./key.key password network[testnet|mainnet] account address_index",
+		Long:  "Create a new key, example: ./wallet key create ./key.key password network[testnet|mainnet] account address_index",
 		RunE:  c.runKeyCreateCmd,
 	}
 }
@@ -77,7 +77,7 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 	fmt.Println("wif: ", wif.String())
 
 	store := storage.NewLocalStorage(args[0])
-	encryptedKey, err := utils.AesEncrypt([]byte(wif.String()), args[1])
+	encryptedKey, err := utils.BIP38Encrypt(wif.String(), args[1])
 	if err != nil {
 		return errors.Wrap(err, "encrypt key failed")
 	}
@@ -93,8 +93,8 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 func (c *WalletCommand) keyListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all keys, example: ./wallet key list ./key.key password",
-		Long:  "List all keys, example: ./wallet key list ./key.key password",
+		Short: "List all keys, example: ./wallet key list ./key.key password network[testnet|mainnet]",
+		Long:  "List all keys, example: ./wallet key list ./key.key password network[testnet|mainnet]",
 		RunE:  c.runListKeys,
 	}
 }
@@ -108,7 +108,7 @@ func (c *WalletCommand) runListKeys(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(err, "list keys failed")
 	}
 	for _, key := range keys {
-		decryptedKey, err := utils.AesDecrypt(key, args[1])
+		decryptedKey, err := utils.BIP38Decrypt(key, args[1], args[2])
 		if err != nil {
 			return errors.Wrap(err, "decrypt key failed")
 		}
@@ -131,7 +131,7 @@ func (c *WalletCommand) importKeyCmd() *cobra.Command {
 func (c *WalletCommand) runImportKeyCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("key import")
 	store := storage.NewLocalStorage(args[0])
-	encryptedKey, err := utils.AesEncrypt([]byte(args[2]), args[1])
+	encryptedKey, err := utils.BIP38Encrypt(args[2], args[1])
 	if err != nil {
 		return errors.Wrap(err, "encrypt key failed")
 	}

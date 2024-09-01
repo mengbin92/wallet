@@ -76,7 +76,7 @@ func (c *WalletCommand) runListAddressCmd(cmd *cobra.Command, args []string) err
 	}
 	for _, key := range keys {
 		// 解密私钥
-		decryptedKey, err := utils.AesDecrypt(key, args[1])
+		decryptedKey, err := utils.BIP38Decrypt(key, args[1],args[2])
 		if err != nil {
 			return errors.Wrap(err, "decrypt key failed")
 		}
