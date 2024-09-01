@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// balanceCmd 方法定义了一个获取钱包余额的命令，并添加了子命令来具体执行获取余额的操作。
 func (c *WalletCommand) balanceCmd() *cobra.Command {
 	balanceCmd := &cobra.Command{
 		Use:   "balance",
@@ -17,6 +18,7 @@ func (c *WalletCommand) balanceCmd() *cobra.Command {
 	return balanceCmd
 }
 
+// getBalanceCmd 方法定义了一个具体的获取钱包余额的命令，包含了命令的使用说明和执行函数。
 func (c *WalletCommand) getBalanceCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get",
@@ -26,6 +28,7 @@ func (c *WalletCommand) getBalanceCmd() *cobra.Command {
 	}
 }
 
+// runGetBalanceCmd 方法实现了获取钱包余额的具体逻辑，包括获取未花费交易输出（UTXOs）并计算余额。
 func (c *WalletCommand) runGetBalanceCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("get balance")
 
