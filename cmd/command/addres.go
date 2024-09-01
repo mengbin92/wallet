@@ -5,7 +5,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/mengbin92/wallet/address"
-	"github.com/mengbin92/wallet/storage"
 	"github.com/mengbin92/wallet/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -67,16 +66,14 @@ func (c *WalletCommand) listAddressCmd() *cobra.Command {
 func (c *WalletCommand) runListAddressCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("address list")
 	// TODO: 校验参数合法性
-	// 解析 key 文件
-	store := storage.NewLocalStorage(args[0])
-	// 获取 key 文件中所有的私钥
-	keys, err := store.ListKeys()
+	// 解析 key 文件并获取 key 文件中所有的私钥
+	keys, err := listKeys(args[0])
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
 	}
 	for _, key := range keys {
 		// 解密私钥
-		decryptedKey, err := utils.BIP38Decrypt(key, args[1],args[2])
+		decryptedKey, err := utils.BIP38Decrypt(key, args[1], args[2])
 		if err != nil {
 			return errors.Wrap(err, "decrypt key failed")
 		}

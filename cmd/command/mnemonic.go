@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mengbin92/wallet/kms"
-	"github.com/mengbin92/wallet/storage"
 	"github.com/mengbin92/wallet/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -30,9 +29,9 @@ func (c *WalletCommand) createMnemonic() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create",
 		Short: "Create a new mnemonic and save it to file",
-		Long:  `Create a new mnemonic and save it to file, example: ./wallet mnemonic create ./mnemonic.txt password
+		Long: `Create a new mnemonic and save it to file, example: ./wallet mnemonic create ./mnemonic.txt password
 		The password is optional, if not provided, the program will generate a random password.`,
-		RunE:  c.runCreateMnemonic,
+		RunE: c.runCreateMnemonic,
 	}
 }
 
@@ -76,7 +75,6 @@ func (c *WalletCommand) runCreateMnemonic(cmd *cobra.Command, args []string) err
 
 // runSaveMnemonic 方法实现了保存助记词到文件的逻辑，包括加密助记词和保存加密后的内容到文件。
 func (c *WalletCommand) runSaveMnemonic(cmd *cobra.Command, args []string) error {
-	store := storage.NewLocalStorage(args[0])
 	var password string
 	var err error
 
@@ -94,7 +92,7 @@ func (c *WalletCommand) runSaveMnemonic(cmd *cobra.Command, args []string) error
 		return errors.Wrap(err, "encrypt mnemonic failed")
 	}
 	// save the mnemonic to file
-	err = store.Save(encryptedMnemonic)
+	err = saveMnemonic(args[0], encryptedMnemonic)
 	if err != nil {
 		return errors.Wrap(err, "save mnemonic failed")
 	}
@@ -109,8 +107,7 @@ func (c *WalletCommand) runLoadMnemonic(cmd *cobra.Command, args []string) error
 		return errors.New("Please provide the file path and password")
 	}
 
-	store := storage.NewLocalStorage(args[0])
-	encryptedMnemonic, err := store.Load()
+	encryptedMnemonic, err := loadMnemonic(args[0])
 	if err != nil {
 		return errors.Wrap(err, "load mnemonic failed")
 	}

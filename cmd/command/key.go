@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/mengbin92/wallet/kms"
-	"github.com/mengbin92/wallet/storage"
 	"github.com/mengbin92/wallet/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -76,12 +75,11 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 	}
 	fmt.Println("wif: ", wif.String())
 
-	store := storage.NewLocalStorage(args[0])
 	encryptedKey, err := utils.BIP38Encrypt(wif.String(), args[1])
 	if err != nil {
 		return errors.Wrap(err, "encrypt key failed")
 	}
-	err = store.SaveKey(encryptedKey)
+	err = saveKey(args[0], encryptedKey)
 	if err != nil {
 		return errors.Wrap(err, "save key failed")
 	}
@@ -102,8 +100,7 @@ func (c *WalletCommand) keyListCmd() *cobra.Command {
 // runListKeys 执行列出所有密钥的命令
 func (c *WalletCommand) runListKeys(cmd *cobra.Command, args []string) error {
 	fmt.Println("key list")
-	store := storage.NewLocalStorage(args[0])
-	keys, err := store.ListKeys()
+	keys, err := listKeys(args[0])
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
 	}
@@ -130,12 +127,12 @@ func (c *WalletCommand) importKeyCmd() *cobra.Command {
 // runImportKeyCmd 执行导入密钥的命令
 func (c *WalletCommand) runImportKeyCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("key import")
-	store := storage.NewLocalStorage(args[0])
+
 	encryptedKey, err := utils.BIP38Encrypt(args[2], args[1])
 	if err != nil {
 		return errors.Wrap(err, "encrypt key failed")
 	}
-	err = store.SaveKey(encryptedKey)
+	err = saveKey(args[0], encryptedKey)
 	if err != nil {
 		return errors.Wrap(err, "save key failed")
 	}

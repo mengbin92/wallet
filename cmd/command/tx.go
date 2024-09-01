@@ -6,7 +6,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/mengbin92/wallet/address"
-	"github.com/mengbin92/wallet/storage"
 	"github.com/mengbin92/wallet/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -37,8 +36,7 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 	var err error
 
 	// check from address
-	store := storage.NewLocalStorage(args[0])
-	keys, err := store.ListKeys()
+	keys, err := listKeys(args[0])
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
 	}
@@ -69,24 +67,24 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(err, "parse account failed")
 	}
 	// 构建交易输出
-	txOut, _, err := buildTxOut(args[4], args[2],amount)
+	txOut, _, err := buildTxOut(args[4], args[2], amount)
 	if err != nil {
 		return errors.Wrap(err, "build tx out failed")
 	}
 
 	// 构建交易输入
-	msgTx,err := buildTxIn(wif, amount, txOut, args[2])
+	msgTx, err := buildTxIn(wif, amount, txOut, args[2])
 	if err != nil {
 		return errors.Wrap(err, "build tx in failed")
 	}
 
 	// 发送交易
-	txHash,err := client.SendRawTransaction(msgTx,false)
+	txHash, err := client.SendRawTransaction(msgTx, false)
 	if err != nil {
 		return errors.Wrap(err, "send raw transaction failed")
 	}
 
-	fmt.Println("txHash:",txHash)
+	fmt.Println("txHash:", txHash)
 
 	return nil
 }

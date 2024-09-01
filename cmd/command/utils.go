@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/mengbin92/wallet/storage"
 	"github.com/mengbin92/wallet/utils"
 	"github.com/pkg/errors"
 )
@@ -160,20 +161,18 @@ func buildTxIn(wif *btcutil.WIF, amount int64, txOut *wire.TxOut, network string
 	return msgTx, nil
 }
 
-// buildRawTx 构建一个未签名的比特币交易
-func buildRawTx(wif *btcutil.WIF, addr, network string, amount int64) (*wire.MsgTx, error) {
+func listKeys(keyFile string) ([]string, error) {
+	return storage.NewLocalStorage(keyFile).ListKeys()
+}
 
-	// 构建交易输出
-	txOut, _, err := buildTxOut(addr, network, amount)
-	if err != nil {
-		return nil, errors.Wrap(err, "构建交易输出失败")
-	}
+func saveKey(keyFile, encryptKey string) error {
+	return storage.NewLocalStorage(keyFile).SaveKey(encryptKey)
+}
 
-	// 构建交易输入
-	msgTx, err := buildTxIn(wif, amount, txOut, network)
-	if err != nil {
-		return nil, errors.Wrap(err, "构建交易输入失败")
-	}
+func saveMnemonic(keyFile, mnemonic string) error {
+	return storage.NewLocalStorage(keyFile).Save(mnemonic)
+}
 
-	return msgTx, nil
+func loadMnemonic(keyFile string) (string, error) {
+	return storage.NewLocalStorage(keyFile).Load()
 }
