@@ -47,6 +47,8 @@ func (c *WalletCommand) init() {
 	c.rootCmd.AddCommand(c.balanceCmd())
 	// transfer subcommand
 	c.rootCmd.AddCommand(c.txCmd())
+	// blockchain subcommand
+	c.rootCmd.AddCommand(c.blockchainCmd())
 }
 
 // Execute 方法执行 WalletCommand 的根命令

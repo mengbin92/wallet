@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/mengbin92/wallet/address"
 	"github.com/mengbin92/wallet/utils"
 	"github.com/pkg/errors"
@@ -17,7 +18,10 @@ func (c *WalletCommand) txCmd() *cobra.Command {
 		Short: "Transaction operations",
 		Long:  "Transaction operations",
 	}
-	cmd.AddCommand(c.sendCmd())
+	cmd.AddCommand(
+		c.sendCmd(),
+		c.getTxCmd(),
+	)
 	return cmd
 }
 
@@ -86,5 +90,28 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("txHash:", txHash)
 
+	return nil
+}
+
+func (c *WalletCommand) getTxCmd()*cobra.Command {
+	return &cobra.Command{
+		Use: "gettx",
+		Short: "Get transaction by txHash, example: ./wallet tx gettx txHash",
+		Long: "Get transaction by txHash, example: ./wallet tx gettx txHash",
+		RunE: c.runGetTxCmd,
+	}
+}
+
+func (c *WalletCommand) runGetTxCmd(cmd *cobra.Command, args []string) error {
+	fmt.Println("get tx")
+	hash,err := chainhash.NewHashFromStr(args[0])
+	if err != nil {
+		return errors.Wrap(err, "parse txHash failed")
+	}
+	tx, err := client.GetRawTransaction(hash)
+	if err != nil {
+		return errors.Wrap(err, "get raw transaction failed")
+	}
+	fmt.Println(tx)
 	return nil
 }
