@@ -39,6 +39,10 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 	var wif *btcutil.WIF
 	var err error
 
+	if len(args)!= 6 {
+		return errors.New("invalid args, example: ./wallet tx send ./key.key password network from to amount")
+	}
+
 	// check from address
 	keys, err := listKeys(args[0])
 	if err != nil {
@@ -104,6 +108,11 @@ func (c *WalletCommand) getTxCmd()*cobra.Command {
 
 func (c *WalletCommand) runGetTxCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("get tx")
+
+	if len(args)!= 1 {
+		return errors.New("invalid args, example: ./wallet tx gettx txHash")
+	}
+
 	hash,err := chainhash.NewHashFromStr(args[0])
 	if err != nil {
 		return errors.Wrap(err, "parse txHash failed")

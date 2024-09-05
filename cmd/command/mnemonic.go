@@ -78,6 +78,10 @@ func (c *WalletCommand) runSaveMnemonic(cmd *cobra.Command, args []string) error
 	var password string
 	var err error
 
+	if len(args) < 1 {
+		return errors.New("Please provide the file path to save the mnemonic, e.g. ./mnemonic.txt password")
+	}
+
 	if len(args) == 2 {
 		password = args[1]
 	} else {

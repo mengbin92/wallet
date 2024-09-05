@@ -38,6 +38,9 @@ func (c *WalletCommand) newAddressCmd() *cobra.Command {
 func (c *WalletCommand) runNewAddressCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("new btc address from wif key")
 	// TODO: 校验参数合法性
+	if len(args)!= 2 {
+		return errors.New("invalid args, example: ./wallet address create wif network[testnet|mainnet]")
+	}
 	// 校验并解析 wif 私钥
 	wif, err := btcutil.DecodeWIF(string(args[0]))
 	if err != nil {
@@ -66,6 +69,9 @@ func (c *WalletCommand) listAddressCmd() *cobra.Command {
 func (c *WalletCommand) runListAddressCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("address list")
 	// TODO: 校验参数合法性
+	if len(args)!= 3 {
+		return errors.New("invalid args, example: ./wallet address list ./key.key password network[testnet|mainnet]")
+	}
 	// 解析 key 文件并获取 key 文件中所有的私钥
 	keys, err := listKeys(args[0])
 	if err != nil {

@@ -42,6 +42,9 @@ func (c *WalletCommand) keyCreateCmd() *cobra.Command {
 // 最后，将加密后的密钥保存到本地存储中，并输出成功信息。
 func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("key create")
+	if len(args)!= 5 {
+		return errors.New("invalid arguments, example: ./wallet key create ./key.key password network[testnet|mainnet] account address_index")
+	}
 	if c.masterKey == nil {
 		err := c.runLoadMnemonic(cmd, args)
 		if err != nil {
@@ -100,6 +103,11 @@ func (c *WalletCommand) keyListCmd() *cobra.Command {
 // runListKeys 执行列出所有密钥的命令
 func (c *WalletCommand) runListKeys(cmd *cobra.Command, args []string) error {
 	fmt.Println("key list")
+
+	if len(args)!= 3 {
+		return errors.New("invalid arguments, example: ./wallet key list ./key.key password network[testnet|mainnet]")
+	}
+
 	keys, err := listKeys(args[0])
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
@@ -127,6 +135,10 @@ func (c *WalletCommand) importKeyCmd() *cobra.Command {
 // runImportKeyCmd 执行导入密钥的命令
 func (c *WalletCommand) runImportKeyCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("key import")
+
+	if len(args) != 3 {
+		return errors.New("invalid arguments, example: ./wallet key import ./key.key password wif")
+	}
 
 	encryptedKey, err := utils.BIP38Encrypt(args[2], args[1])
 	if err != nil {

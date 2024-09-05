@@ -32,6 +32,10 @@ func (c *WalletCommand) getBalanceCmd() *cobra.Command {
 func (c *WalletCommand) runGetBalanceCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("get balance")
 
+	if len(args) != 2 {
+		return errors.New("invalid arguments, example: ./wallet balance network[testnet|mainnet] address")
+	}
+
 	utxos, err := getUTXOs(args[1], args[0])
 	if err != nil {
 		return errors.Wrap(err, "get utxos failed")

@@ -50,6 +50,9 @@ func (c *WalletCommand) blockHashCmd() *cobra.Command {
 		Short: "Get the block hash by block number",
 		Long:  "Get the block hash by block number, example: ./wallet block gethash 100",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("block number is required")
+			}
 			bc, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return errors.Wrap(err, "failed to parse block number")
@@ -71,6 +74,9 @@ func (c *WalletCommand) blockHeaderCmd() *cobra.Command {
 		Short: "Get the block header by block hash",
 		Long:  "Get the block header by block hash, example: ./wallet block getheader hash",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("block hash is required")
+			}
 			hash, err := chainhash.NewHashFromStr(args[0])
 			if err != nil {
 				return errors.Wrap(err, "failed to parse block hash")
@@ -98,6 +104,9 @@ func (c *WalletCommand) blockCmd() *cobra.Command {
 		Short: "Get the block by block hash",
 		Long:  "Get the block by block hash, example: ./wallet block getblock hash",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("block hash is required")
+			}
 			hash, err := chainhash.NewHashFromStr(args[0])
 			if err != nil {
 				return errors.Wrap(err, "failed to parse block hash")
