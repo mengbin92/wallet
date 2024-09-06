@@ -31,12 +31,25 @@ func (c *WalletCommand) getBalanceCmd() *cobra.Command {
 // runGetBalanceCmd 方法实现了获取钱包余额的具体逻辑，包括获取未花费交易输出（UTXOs）并计算余额。
 func (c *WalletCommand) runGetBalanceCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("get balance")
+	var network, address string
+	var err error
 
 	if len(args) != 2 {
-		return errors.New("invalid arguments, example: ./wallet balance network[testnet|mainnet] address")
+		// 未提供参数，需要手动输入
+		network, err = askNetwork()
+		if err != nil {
+			return errors.Wrap(err, "ask network failed")
+		}
+		address, err = askAddress()
+		if err != nil {
+			return errors.Wrap(err, "ask address failed")
+		}
+	} else {
+		network = args[0]
+		address = args[1]
 	}
 
-	utxos, err := getUTXOs(args[1], args[0])
+	utxos, err := getUTXOs(address, network)
 	if err != nil {
 		return errors.Wrap(err, "get utxos failed")
 	}
@@ -44,6 +57,6 @@ func (c *WalletCommand) runGetBalanceCmd(cmd *cobra.Command, args []string) erro
 	for _, utxo := range utxos {
 		balance += utxo.Amount
 	}
-	fmt.Printf("Address: %s Balance: %.9f BTC\n", args[1], balance)
+	fmt.Printf("Address: %s Balance: %.9f BTC\n", address, balance)
 	return nil
 }

@@ -3,6 +3,7 @@ package command
 import (
 	"encoding/hex"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -175,4 +176,77 @@ func saveMnemonic(keyFile, mnemonic string) error {
 
 func loadMnemonic(keyFile string) (string, error) {
 	return storage.NewLocalStorage(keyFile).Load()
+}
+
+func askPassword() (string, error) {
+	var password string
+	prompt := &survey.Password{
+		Message: "请输入密码：",
+	}
+	err := survey.AskOne(prompt, &password)
+	if err != nil {
+		return "", errors.Wrap(err, "获取密码失败")
+	}
+	return password, nil
+}
+
+func askFilepath() (string, error) {
+	var filepath string
+	prompt := &survey.Input{
+		Message: "请输入文件路径：",
+	}
+	err := survey.AskOne(prompt, &filepath)
+	if err != nil {
+		return "", errors.Wrap(err, "获取文件路径失败")
+	}
+	return filepath, nil
+}
+
+func askAddress() (string, error) {
+	var address string
+	prompt := &survey.Input{
+		Message: "请输入比特币地址：",
+	}
+	err := survey.AskOne(prompt, &address)
+	if err != nil {
+		return "", errors.Wrap(err, "获取比特币地址失败")
+	}
+	return address, nil
+}
+
+func askWIF() (string, error) {
+	var wif string
+	prompt := &survey.Input{
+		Message: "请输入WIF私钥：",
+	}
+	err := survey.AskOne(prompt, &wif)
+	if err != nil {
+		return "", errors.Wrap(err, "获取WIF私钥失败")
+	}
+	return wif, nil
+}
+
+func askNetwork() (string, error) {
+	var network string
+	prompt := &survey.Select{
+		Message: "请选择网络类型：",
+		Options: []string{"mainnet", "testnet"},
+	}
+	err := survey.AskOne(prompt, &network)
+	if err != nil {
+		return "", errors.Wrap(err, "获取网络类型失败")
+	}
+	return network, nil
+}
+
+func askNumber(msg string) (uint64, error) {
+	var number uint64
+	prompt := &survey.Input{
+		Message: msg,
+	}
+	err := survey.AskOne(prompt, &number)
+	if err != nil {
+		return 0, errors.Wrap(err, "获取数量失败")
+	}
+	return number, nil
 }

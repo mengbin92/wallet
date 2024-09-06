@@ -58,6 +58,7 @@ func (c *WalletCommand) loadMnemonic() *cobra.Command {
 // runCreateMnemonic 方法实现了创建新助记词的逻辑，包括生成助记词和保存助记词到文件。
 func (c *WalletCommand) runCreateMnemonic(cmd *cobra.Command, args []string) error {
 	fmt.Println("Create a new mnemonic")
+	
 	if len(args) < 1 {
 		return errors.New("Please provide the file path to save the mnemonic, e.g. ./mnemonic.txt password")
 	}

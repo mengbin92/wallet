@@ -42,29 +42,54 @@ func (c *WalletCommand) keyCreateCmd() *cobra.Command {
 // 最后，将加密后的密钥保存到本地存储中，并输出成功信息。
 func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("key create")
-	if len(args)!= 5 {
-		return errors.New("invalid arguments, example: ./wallet key create ./key.key password network[testnet|mainnet] account address_index")
+	var err error
+	var filePath, password, network string
+	var account, addressIndex uint64
+	if len(args) != 5 {
+		filePath, err = askFilepath()
+		if err != nil {
+			return errors.Wrap(err, "ask filepath failed")
+		}
+		password, err = askPassword()
+		if err != nil {
+			return errors.Wrap(err, "ask password failed")
+		}
+		network, err = askNetwork()
+		if err != nil {
+			return errors.Wrap(err, "ask network failed")
+		}
+		account, err = askNumber("请输入账户编号：example: 1")
+		if err != nil {
+			return errors.Wrap(err, "ask account failed")
+		}
+		addressIndex, err = askNumber("请输入地址编号：example: 1")
+		if err != nil {
+			return errors.Wrap(err, "ask address index failed")
+		}
+	} else {
+		filePath = args[0]
+		password = args[1]
+		network = args[2]
+		account, err = strconv.ParseUint(args[3], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "parse account failed")
+		}
+
+		addressIndex, err = strconv.ParseUint(args[4], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "parse address index failed")
+		}
 	}
 	if c.masterKey == nil {
 		err := c.runLoadMnemonic(cmd, args)
 		if err != nil {
 			return errors.Wrap(err, "load mnemonic failed")
 		}
-		masterKey, err := c.genMasterKey(args[1], args[2])
+		masterKey, err := c.genMasterKey(password, network)
 		if err != nil {
 			return errors.Wrap(err, "generate master key failed")
 		}
 		c.masterKey = masterKey
-	}
-
-	account, err := strconv.ParseUint(args[3], 10, 64)
-	if err != nil {
-		return errors.Wrap(err, "parse account failed")
-	}
-
-	addressIndex, err := strconv.ParseUint(args[4], 10, 64)
-	if err != nil {
-		return errors.Wrap(err, "parse address index failed")
 	}
 
 	child, err := kms.DeriveChildKey(c.masterKey, 0, uint32(account), uint32(addressIndex))
@@ -72,17 +97,17 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 		return errors.Wrap(err, "derive child key failed")
 	}
 
-	wif, err := kms.GetWIFFromExtendedKey(child, args[2])
+	wif, err := kms.GetWIFFromExtendedKey(child, network)
 	if err != nil {
 		return errors.Wrap(err, "get wif failed")
 	}
 	fmt.Println("wif: ", wif.String())
 
-	encryptedKey, err := utils.BIP38Encrypt(wif.String(), args[1])
+	encryptedKey, err := utils.BIP38Encrypt(wif.String(), password)
 	if err != nil {
 		return errors.Wrap(err, "encrypt key failed")
 	}
-	err = saveKey(args[0], encryptedKey)
+	err = saveKey(filePath, encryptedKey)
 	if err != nil {
 		return errors.Wrap(err, "save key failed")
 	}
@@ -104,16 +129,33 @@ func (c *WalletCommand) keyListCmd() *cobra.Command {
 func (c *WalletCommand) runListKeys(cmd *cobra.Command, args []string) error {
 	fmt.Println("key list")
 
-	if len(args)!= 3 {
-		return errors.New("invalid arguments, example: ./wallet key list ./key.key password network[testnet|mainnet]")
+	var err error
+	var filePath, password, network string
+	if len(args) != 3 {
+		filePath, err = askFilepath()
+		if err != nil {
+			return errors.Wrap(err, "ask filepath failed")
+		}
+		password, err = askPassword()
+		if err != nil {
+			return errors.Wrap(err, "ask password failed")
+		}
+		network, err = askNetwork()
+		if err != nil {
+			return errors.Wrap(err, "ask network failed")
+		}
+	} else {
+		filePath = args[0]
+		password = args[1]
+		network = args[2]
 	}
 
-	keys, err := listKeys(args[0])
+	keys, err := listKeys(filePath)
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
 	}
 	for _, key := range keys {
-		decryptedKey, err := utils.BIP38Decrypt(key, args[1], args[2])
+		decryptedKey, err := utils.BIP38Decrypt(key, password, network)
 		if err != nil {
 			return errors.Wrap(err, "decrypt key failed")
 		}
@@ -136,15 +178,32 @@ func (c *WalletCommand) importKeyCmd() *cobra.Command {
 func (c *WalletCommand) runImportKeyCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("key import")
 
+	var err error
+	var filePath, password, wif string
 	if len(args) != 3 {
-		return errors.New("invalid arguments, example: ./wallet key import ./key.key password wif")
+		filePath, err = askFilepath()
+		if err != nil {
+			return errors.Wrap(err, "ask filepath failed")
+		}
+		password, err = askPassword()
+		if err != nil {
+			return errors.Wrap(err, "ask password failed")
+		}
+		wif, err = askWIF()
+		if err != nil {
+			return errors.Wrap(err, "ask wif failed")
+		}
+	} else {
+		filePath = args[0]
+		password = args[1]
+		wif = args[2]
 	}
 
-	encryptedKey, err := utils.BIP38Encrypt(args[2], args[1])
+	encryptedKey, err := utils.BIP38Encrypt(wif, password)
 	if err != nil {
 		return errors.Wrap(err, "encrypt key failed")
 	}
-	err = saveKey(args[0], encryptedKey)
+	err = saveKey(filePath, encryptedKey)
 	if err != nil {
 		return errors.Wrap(err, "save key failed")
 	}

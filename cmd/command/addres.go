@@ -37,17 +37,36 @@ func (c *WalletCommand) newAddressCmd() *cobra.Command {
 // runNewAddressCmd 从提供 wif 私钥创建 btc 地址
 func (c *WalletCommand) runNewAddressCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("new btc address from wif key")
+
+	var wifStr, network string
+	var err error
+
 	// TODO: 校验参数合法性
-	if len(args)!= 2 {
+	if len(args) != 2 {
+		// 未提供参数，需要手动输入
+		// 输入 wif 私钥
+		wifStr, err = askWIF()
+		if err != nil {
+			return errors.Wrap(err, "ask wif failed")
+		}
+		// 输入网络类型
+		network, err = askNetwork()
+		if err != nil {
+			return errors.Wrap(err, "ask network failed")
+		}
+	} else if len(args) != 2 {
 		return errors.New("invalid args, example: ./wallet address create wif network[testnet|mainnet]")
+	} else {
+		wifStr = args[0]
+		network = args[1]
 	}
 	// 校验并解析 wif 私钥
-	wif, err := btcutil.DecodeWIF(string(args[0]))
+	wif, err := btcutil.DecodeWIF(wifStr)
 	if err != nil {
 		return errors.Wrap(err, "decode wif failed")
 	}
 	// 生成 bech32 地址
-	bech32Addr, err := address.NewBTCAddressFromWIF(wif).GenBech32Address(utils.GetNetwork(args[1]))
+	bech32Addr, err := address.NewBTCAddressFromWIF(wif).GenBech32Address(utils.GetNetwork(network))
 	if err != nil {
 		return errors.Wrap(err, "generate bech32 address failed")
 	}
@@ -68,18 +87,41 @@ func (c *WalletCommand) listAddressCmd() *cobra.Command {
 // runListAddressCmd 列出所有地址，需要提供 key 文件和密码
 func (c *WalletCommand) runListAddressCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("address list")
+	var filePath, password, network string
+	var err error
 	// TODO: 校验参数合法性
-	if len(args)!= 3 {
-		return errors.New("invalid args, example: ./wallet address list ./key.key password network[testnet|mainnet]")
+	if len(args) != 3 {
+		// 未提供参数，需要手动输入
+		// 输入 key 文件路径
+		filePath, err = askFilepath()
+		if err != nil {
+			return errors.Wrap(err, "ask file path failed")
+		}
+
+		// 输入密码
+		password, err = askPassword()
+		if err != nil {
+			return errors.Wrap(err, "ask password failed")
+		}
+
+		// 输入网络类型
+		network, err = askNetwork()
+		if err != nil {
+			return errors.Wrap(err, "ask network failed")
+		}
+	} else {
+		filePath = args[0]
+		password = args[1]
+		network = args[2]
 	}
 	// 解析 key 文件并获取 key 文件中所有的私钥
-	keys, err := listKeys(args[0])
+	keys, err := listKeys(filePath)
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
 	}
 	for _, key := range keys {
 		// 解密私钥
-		decryptedKey, err := utils.BIP38Decrypt(key, args[1], args[2])
+		decryptedKey, err := utils.BIP38Decrypt(key, password, network)
 		if err != nil {
 			return errors.Wrap(err, "decrypt key failed")
 		}
@@ -89,7 +131,7 @@ func (c *WalletCommand) runListAddressCmd(cmd *cobra.Command, args []string) err
 			return errors.Wrap(err, "decode wif failed")
 		}
 		// 生成 bech32 地址
-		bech32Addr, err := address.NewBTCAddressFromWIF(wif).GenBech32Address(utils.GetNetwork(args[2]))
+		bech32Addr, err := address.NewBTCAddressFromWIF(wif).GenBech32Address(utils.GetNetwork(network))
 		if err != nil {
 			return errors.Wrap(err, "generate bech32 address failed")
 		}
