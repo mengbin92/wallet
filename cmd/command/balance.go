@@ -40,7 +40,7 @@ func (c *WalletCommand) runGetBalanceCmd(cmd *cobra.Command, args []string) erro
 		if err != nil {
 			return errors.Wrap(err, "ask network failed")
 		}
-		address, err = askAddress()
+		address, err = askOneString("Please input the address:")
 		if err != nil {
 			return errors.Wrap(err, "ask address failed")
 		}

@@ -46,11 +46,11 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 	var filePath, password, network string
 	var account, addressIndex uint64
 	if len(args) != 5 {
-		filePath, err = askFilepath()
+		filePath, err = askOneString("Please input the file path of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askPassword()
+		password, err = askOneString("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}
@@ -58,11 +58,11 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 		if err != nil {
 			return errors.Wrap(err, "ask network failed")
 		}
-		account, err = askNumber("请输入账户编号：example: 1")
+		account, err = askOneNumber("Please input the account number: ")
 		if err != nil {
 			return errors.Wrap(err, "ask account failed")
 		}
-		addressIndex, err = askNumber("请输入地址编号：example: 1")
+		addressIndex, err = askOneNumber("Please input the address index: ")
 		if err != nil {
 			return errors.Wrap(err, "ask address index failed")
 		}
@@ -132,11 +132,11 @@ func (c *WalletCommand) runListKeys(cmd *cobra.Command, args []string) error {
 	var err error
 	var filePath, password, network string
 	if len(args) != 3 {
-		filePath, err = askFilepath()
+		filePath, err = askOneString("Please input the file path of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askPassword()
+		password, err = askOneString("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}
@@ -181,15 +181,15 @@ func (c *WalletCommand) runImportKeyCmd(cmd *cobra.Command, args []string) error
 	var err error
 	var filePath, password, wif string
 	if len(args) != 3 {
-		filePath, err = askFilepath()
+		filePath, err = askOneString("Please input the file path of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askPassword()
+		password, err = askOneString("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}
-		wif, err = askWIF()
+		wif, err = askOneString("Please input the wif key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask wif failed")
 		}

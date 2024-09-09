@@ -20,13 +20,13 @@ func getUTXOs(addr, network string) ([]*btcjson.ListUnspentResult, error) {
 	// 解析比特币地址
 	address, err := btcutil.DecodeAddress(addr, utils.GetNetwork(network))
 	if err != nil {
-		return nil, errors.Wrap(err, "解析比特币地址失败")
+		return nil, errors.Wrap(err, "failed to parse bitcoin address")
 	}
 
 	// 使用SearchRawTransactionsVerbose获取与地址相关的所有交易
 	transactions, err := client.SearchRawTransactionsVerbose(address, 0, 100, true, false, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "获取与地址相关的所有交易失败")
+		return nil, errors.Wrapf(err, "failed to get transactions with address: %s", addr)
 	}
 
 	// 用于存储UTXO的切片
@@ -37,7 +37,7 @@ func getUTXOs(addr, network string) ([]*btcjson.ListUnspentResult, error) {
 		// 将交易ID字符串转换为链哈希对象
 		txid, err := chainhash.NewHashFromStr(tx.Txid)
 		if err != nil {
-			return nil, errors.Wrap(err, "将交易ID字符串转换为链哈希对象失败")
+			return nil, errors.Wrap(err, "failed to parse transaction hash")
 		}
 
 		// 遍历交易的输出
@@ -50,7 +50,7 @@ func getUTXOs(addr, network string) ([]*btcjson.ListUnspentResult, error) {
 			// 使用GetTxOut方法获取交易输出，确认该输出是否未花费
 			utxo, err := client.GetTxOut(txid, vout.N, true)
 			if err != nil {
-				return nil, errors.Wrap(err, "获取交易输出失败")
+				return nil, errors.Wrap(err, "failed to get transaction output")
 			}
 
 			// 如果交易输出未花费，则将其添加到UTXO切片中
@@ -78,13 +78,13 @@ func buildTxOut(addr, network string, amount int64) (*wire.TxOut, []byte, error)
 	// 解析比特币地址
 	destinationAddress, err := btcutil.DecodeAddress(addr, utils.GetNetwork(network))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "解析比特币地址失败")
+		return nil, nil, errors.Wrap(err, "failed to parse bitcoin address")
 	}
 
 	// 生成支付到地址的脚本
 	pkScript, err := txscript.PayToAddrScript(destinationAddress)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "生成支付到地址的脚本失败")
+		return nil, nil, errors.Wrap(err, "failed to generate script")
 	}
 
 	// 创建一个新的交易输出，金额单位为 satoshis
@@ -96,13 +96,13 @@ func buildTxIn(wif *btcutil.WIF, amount int64, txOut *wire.TxOut, network string
 	// 解析比特币地址
 	fromAddr, err := btcutil.NewAddressWitnessPubKeyHash(btcutil.Hash160(wif.SerializePubKey()), utils.GetNetwork(network))
 	if err != nil {
-		return nil, errors.Wrap(err, "解析比特币地址失败")
+		return nil, errors.Wrap(err, "failed to parse bitcoin address")
 	}
 
 	// 获取UTXOs
 	utxos, err := getUTXOs(fromAddr.EncodeAddress(), network)
 	if err != nil {
-		return nil, errors.Wrap(err, "获取UTXOs失败")
+		return nil, errors.Wrap(err, "failed to get utxos")
 	}
 
 	msgTx := wire.NewMsgTx(wire.TxVersion)
@@ -115,7 +115,7 @@ func buildTxIn(wif *btcutil.WIF, amount int64, txOut *wire.TxOut, network string
 		}
 		txHash, err := chainhash.NewHashFromStr(utxo.TxID)
 		if err != nil {
-			return nil, errors.Wrap(err, "解析交易哈希失败")
+			return nil, errors.Wrap(err, "failed to parse transaction hash")
 		}
 
 		txIn := wire.NewTxIn(&wire.OutPoint{Hash: *txHash, Index: uint32(utxo.Vout)}, nil, nil)
@@ -132,7 +132,7 @@ func buildTxIn(wif *btcutil.WIF, amount int64, txOut *wire.TxOut, network string
 	if change > fee {
 		changePkScript, err := txscript.PayToAddrScript(fromAddr)
 		if err != nil {
-			return nil, errors.Wrap(err, "生成找零地址的脚本失败")
+			return nil, errors.Wrap(err, "failed to generate change script")
 		}
 		txOut := wire.NewTxOut(change-fee, changePkScript)
 		msgTx.AddTxOut(txOut)
@@ -146,7 +146,7 @@ func buildTxIn(wif *btcutil.WIF, amount int64, txOut *wire.TxOut, network string
 		}
 		txHash, err := chainhash.NewHashFromStr(utxos[i].TxID)
 		if err != nil {
-			return nil, errors.Wrap(err, "解析交易哈希失败")
+			return nil, errors.Wrap(err, "failed to parse transaction hash")
 		}
 		outPoint := wire.OutPoint{Hash: *txHash, Index: uint32(utxos[i].Vout)}
 		prevOutputFetcher := txscript.NewMultiPrevOutFetcher(map[wire.OutPoint]*wire.TxOut{
@@ -155,7 +155,7 @@ func buildTxIn(wif *btcutil.WIF, amount int64, txOut *wire.TxOut, network string
 		sigHashes := txscript.NewTxSigHashes(msgTx, prevOutputFetcher)
 		sigScript, err := txscript.WitnessSignature(msgTx, sigHashes, int(utxos[i].Vout), int64(utxos[i].Amount*1e8), prevOutputScript, txscript.SigHashAll, wif.PrivKey, true)
 		if err != nil {
-			return nil, errors.Wrap(err, "签名交易失败")
+			return nil, errors.Wrap(err, "failed to sign transaction")
 		}
 		txIn.Witness = sigScript
 	}
@@ -178,52 +178,28 @@ func loadMnemonic(keyFile string) (string, error) {
 	return storage.NewLocalStorage(keyFile).Load()
 }
 
-func askPassword() (string, error) {
-	var password string
-	prompt := &survey.Password{
-		Message: "请输入密码：",
+func askOneString(msg string) (string, error) {
+	var intput string
+	prompt := &survey.Input{
+		Message: msg,
 	}
-	err := survey.AskOne(prompt, &password)
+	err := survey.AskOne(prompt, &intput)
 	if err != nil {
-		return "", errors.Wrap(err, "获取密码失败")
+		return "", errors.Wrap(err, "failed to get input")
 	}
-	return password, nil
+	return intput, nil
 }
 
-func askFilepath() (string, error) {
-	var filepath string
+func askOneNumber(msg string) (uint64, error) {
+	var number uint64
 	prompt := &survey.Input{
-		Message: "请输入文件路径：",
+		Message: msg,
 	}
-	err := survey.AskOne(prompt, &filepath)
+	err := survey.AskOne(prompt, &number)
 	if err != nil {
-		return "", errors.Wrap(err, "获取文件路径失败")
+		return 0, errors.Wrap(err, "failed to get number")
 	}
-	return filepath, nil
-}
-
-func askAddress() (string, error) {
-	var address string
-	prompt := &survey.Input{
-		Message: "请输入比特币地址：",
-	}
-	err := survey.AskOne(prompt, &address)
-	if err != nil {
-		return "", errors.Wrap(err, "获取比特币地址失败")
-	}
-	return address, nil
-}
-
-func askWIF() (string, error) {
-	var wif string
-	prompt := &survey.Input{
-		Message: "请输入WIF私钥：",
-	}
-	err := survey.AskOne(prompt, &wif)
-	if err != nil {
-		return "", errors.Wrap(err, "获取WIF私钥失败")
-	}
-	return wif, nil
+	return number, nil
 }
 
 func askNetwork() (string, error) {
@@ -237,16 +213,4 @@ func askNetwork() (string, error) {
 		return "", errors.Wrap(err, "获取网络类型失败")
 	}
 	return network, nil
-}
-
-func askNumber(msg string) (uint64, error) {
-	var number uint64
-	prompt := &survey.Input{
-		Message: msg,
-	}
-	err := survey.AskOne(prompt, &number)
-	if err != nil {
-		return 0, errors.Wrap(err, "获取数量失败")
-	}
-	return number, nil
 }

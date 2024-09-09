@@ -38,19 +38,54 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("send btc")
 	var wif *btcutil.WIF
 	var err error
+	var filePath, password, network, from, to string
+	var amount uint64
 
-	if len(args)!= 6 {
-		return errors.New("invalid args, example: ./wallet tx send ./key.key password network from to amount")
+	if len(args) != 6 {
+		filePath, err = askOneString("Please input the file path of the key: ")
+		if err != nil {
+			return errors.Wrap(err, "ask filepath failed")
+		}
+		password, err = askOneString("Please input the password of the key: ")
+		if err != nil {
+			return errors.Wrap(err, "ask password failed")
+		}
+		network, err = askNetwork()
+		if err != nil {
+			return errors.Wrap(err, "ask network failed")
+		}
+		from, err = askOneString("Please input the sender address: ")
+		if err != nil {
+			return errors.Wrap(err, "ask sender address failed")
+		}
+		to, err = askOneString("Please input the receiver address: ")
+		if err != nil {
+			return errors.Wrap(err, "ask receiver address failed")
+		}
+		amount, err = askOneNumber("Please input the amount of bitcoins to send: ")
+		if err != nil {
+			return errors.Wrap(err, "ask amount failed")
+		}
+	} else {
+		filePath = args[0]
+		password = args[1]
+		network = args[2]
+		from = args[3]
+		to = args[4]
+		amount, err = strconv.ParseUint(args[5], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "parse amount failed")
+		}
 	}
 
 	// check from address
-	keys, err := listKeys(args[0])
+	keys, err := listKeys(filePath)
 	if err != nil {
 		return errors.Wrap(err, "list keys failed")
 	}
 	for _, key := range keys {
 		// 解密私钥
-		decryptedKey, err := utils.BIP38Decrypt(key, args[1], args[2])
+		decryptedKey, err := utils.BIP38Decrypt(key, password, network)
 		if err != nil {
 			return errors.Wrap(err, "decrypt key failed")
 		}
@@ -58,11 +93,11 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return errors.Wrap(err, "decode wif failed")
 		}
-		addr, err := address.NewBTCAddressFromWIF(wif).GenBech32Address(utils.GetNetwork(args[2]))
+		addr, err := address.NewBTCAddressFromWIF(wif).GenBech32Address(utils.GetNetwork(network))
 		if err != nil {
 			return errors.Wrap(err, "generate bech32 address failed")
 		}
-		if addr == args[3] {
+		if addr == from {
 			break
 		}
 	}
@@ -70,18 +105,14 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 		return errors.New("from address not found")
 	}
 
-	amount, err := strconv.ParseInt(args[5], 10, 64)
-	if err != nil {
-		return errors.Wrap(err, "parse account failed")
-	}
 	// 构建交易输出
-	txOut, _, err := buildTxOut(args[4], args[2], amount)
+	txOut, _, err := buildTxOut(to, network, int64(amount))
 	if err != nil {
 		return errors.Wrap(err, "build tx out failed")
 	}
 
 	// 构建交易输入
-	msgTx, err := buildTxIn(wif, amount, txOut, args[2])
+	msgTx, err := buildTxIn(wif, int64(amount), txOut, network)
 	if err != nil {
 		return errors.Wrap(err, "build tx in failed")
 	}
@@ -97,23 +128,23 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *WalletCommand) getTxCmd()*cobra.Command {
+func (c *WalletCommand) getTxCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "gettx",
+		Use:   "gettx",
 		Short: "Get transaction by txHash, example: ./wallet tx gettx txHash",
-		Long: "Get transaction by txHash, example: ./wallet tx gettx txHash",
-		RunE: c.runGetTxCmd,
+		Long:  "Get transaction by txHash, example: ./wallet tx gettx txHash",
+		RunE:  c.runGetTxCmd,
 	}
 }
 
 func (c *WalletCommand) runGetTxCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("get tx")
 
-	if len(args)!= 1 {
+	if len(args) != 1 {
 		return errors.New("invalid args, example: ./wallet tx gettx txHash")
 	}
 
-	hash,err := chainhash.NewHashFromStr(args[0])
+	hash, err := chainhash.NewHashFromStr(args[0])
 	if err != nil {
 		return errors.Wrap(err, "parse txHash failed")
 	}

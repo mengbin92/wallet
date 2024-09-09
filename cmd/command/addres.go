@@ -45,7 +45,7 @@ func (c *WalletCommand) runNewAddressCmd(cmd *cobra.Command, args []string) erro
 	if len(args) != 2 {
 		// 未提供参数，需要手动输入
 		// 输入 wif 私钥
-		wifStr, err = askWIF()
+		wifStr, err = askOneString("Please input wif key")
 		if err != nil {
 			return errors.Wrap(err, "ask wif failed")
 		}
@@ -93,13 +93,13 @@ func (c *WalletCommand) runListAddressCmd(cmd *cobra.Command, args []string) err
 	if len(args) != 3 {
 		// 未提供参数，需要手动输入
 		// 输入 key 文件路径
-		filePath, err = askFilepath()
+		filePath, err = askOneString("Please input key file path")
 		if err != nil {
 			return errors.Wrap(err, "ask file path failed")
 		}
 
 		// 输入密码
-		password, err = askPassword()
+		password, err = askOneString("Please input key file path")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}

@@ -50,14 +50,21 @@ func (c *WalletCommand) blockHashCmd() *cobra.Command {
 		Short: "Get the block hash by block number",
 		Long:  "Get the block hash by block number, example: ./wallet block gethash 100",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			var bc uint64
 			if len(args) != 1 {
-				return errors.New("block number is required")
+				bc, err = askOneNumber("Please enter the block number: ")
+				if err != nil {
+					return errors.Wrap(err, "failed to get block number")
+				}
+			} else {
+				bc, err = strconv.ParseUint(args[0], 10, 64)
+				if err != nil {
+					return errors.Wrap(err, "failed to parse block number")
+				}
 			}
-			bc, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				return errors.Wrap(err, "failed to parse block number")
-			}
-			hash, err := client.GetBlockHash(bc)
+
+			hash, err := client.GetBlockHash(int64(bc))
 			if err != nil {
 				return errors.Wrap(err, "failed to get block hash")
 			}
@@ -74,10 +81,17 @@ func (c *WalletCommand) blockHeaderCmd() *cobra.Command {
 		Short: "Get the block header by block hash",
 		Long:  "Get the block header by block hash, example: ./wallet block getheader hash",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var hashStr string
+			var err error
 			if len(args) != 1 {
-				return errors.New("block hash is required")
+				hashStr, err = askOneString("Please enter the block hash: ")
+				if err != nil {
+					return errors.Wrap(err, "failed to get block hash")
+				}
+			} else {
+				hashStr = args[0]
 			}
-			hash, err := chainhash.NewHashFromStr(args[0])
+			hash, err := chainhash.NewHashFromStr(hashStr)
 			if err != nil {
 				return errors.Wrap(err, "failed to parse block hash")
 			}
@@ -104,10 +118,17 @@ func (c *WalletCommand) blockCmd() *cobra.Command {
 		Short: "Get the block by block hash",
 		Long:  "Get the block by block hash, example: ./wallet block getblock hash",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var hashStr string
+			var err error
 			if len(args) != 1 {
-				return errors.New("block hash is required")
+				hashStr, err = askOneString("Please enter the block hash: ")
+				if err != nil {
+					return errors.Wrap(err, "failed to get block hash")
+				}
+			} else {
+				hashStr = args[0]
 			}
-			hash, err := chainhash.NewHashFromStr(args[0])
+			hash, err := chainhash.NewHashFromStr(hashStr)
 			if err != nil {
 				return errors.Wrap(err, "failed to parse block hash")
 			}
@@ -115,7 +136,7 @@ func (c *WalletCommand) blockCmd() *cobra.Command {
 			if err != nil {
 				return errors.Wrap(err, "failed to get block")
 			}
-			fmt.Printf("block: %s has %d transactions\n", args[0],len(block.Transactions))
+			fmt.Printf("block: %s has %d transactions\n", args[0], len(block.Transactions))
 			return nil
 		},
 	}
