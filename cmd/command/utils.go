@@ -202,6 +202,18 @@ func askOneNumber(msg string) (uint64, error) {
 	return number, nil
 }
 
+func askOnePassword(msg string) (string, error) {
+	var password string
+	prompt := &survey.Password{
+		Message: msg,
+	}
+	err := survey.AskOne(prompt, &password)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get password")
+	}
+	return password, nil
+}
+
 func askNetwork() (string, error) {
 	var network string
 	prompt := &survey.Select{

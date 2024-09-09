@@ -50,7 +50,7 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askOneString("Please input the password of the key: ")
+		password, err = askOnePassword("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}
@@ -80,17 +80,23 @@ func (c *WalletCommand) runKeyCreateCmd(cmd *cobra.Command, args []string) error
 			return errors.Wrap(err, "parse address index failed")
 		}
 	}
-	if c.masterKey == nil {
-		err := c.runLoadMnemonic(cmd, args)
-		if err != nil {
-			return errors.Wrap(err, "load mnemonic failed")
-		}
-		masterKey, err := c.genMasterKey(password, network)
-		if err != nil {
-			return errors.Wrap(err, "generate master key failed")
-		}
-		c.masterKey = masterKey
+	encryptedMnemonic, err := loadMnemonic(filePath)
+	if err != nil {
+		return errors.Wrap(err, "load mnemonic failed")
 	}
+
+	// decrypt the mnemonic with password
+	mnemonic, err := utils.AesDecrypt(encryptedMnemonic, password)
+	if err != nil {
+		return errors.Wrap(err, "decrypt mnemonic failed")
+	}
+	c.mnemonic = string(mnemonic)
+
+	masterKey, err := c.genMasterKey(password, network)
+	if err != nil {
+		return errors.Wrap(err, "generate master key failed")
+	}
+	c.masterKey = masterKey
 
 	child, err := kms.DeriveChildKey(c.masterKey, 0, uint32(account), uint32(addressIndex))
 	if err != nil {
@@ -136,7 +142,7 @@ func (c *WalletCommand) runListKeys(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askOneString("Please input the password of the key: ")
+		password, err = askOnePassword("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}
@@ -185,7 +191,7 @@ func (c *WalletCommand) runImportKeyCmd(cmd *cobra.Command, args []string) error
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askOneString("Please input the password of the key: ")
+		password, err = askOnePassword("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}

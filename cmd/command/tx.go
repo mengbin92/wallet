@@ -46,7 +46,7 @@ func (c *WalletCommand) runSendCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return errors.Wrap(err, "ask filepath failed")
 		}
-		password, err = askOneString("Please input the password of the key: ")
+		password, err = askOnePassword("Please input the password of the key: ")
 		if err != nil {
 			return errors.Wrap(err, "ask password failed")
 		}
@@ -140,11 +140,17 @@ func (c *WalletCommand) getTxCmd() *cobra.Command {
 func (c *WalletCommand) runGetTxCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("get tx")
 
+	var err error
+	var txHash string
+
 	if len(args) != 1 {
-		return errors.New("invalid args, example: ./wallet tx gettx txHash")
+		txHash, err = askOneString("Please input the txHash: ")
+		if err != nil {
+			return errors.Wrap(err, "ask txHash failed")
+		}
 	}
 
-	hash, err := chainhash.NewHashFromStr(args[0])
+	hash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {
 		return errors.Wrap(err, "parse txHash failed")
 	}

@@ -7,6 +7,21 @@ import (
 )
 
 func init() {
+	var err error 
+
+	if os.Getenv("RPC_CERT") != "" {
+		rpc_cert = os.Getenv("RPC_CERT")
+	}
+	if os.Getenv("RPC_ENDPOINT") != "" {
+		rpc_endpoint = os.Getenv("RPC_ENDPOINT")
+	}
+	if os.Getenv("RPC_USER") != "" {
+		rpc_user = os.Getenv("RPC_USER")
+	}
+	if os.Getenv("RPC_PASSWORD") != "" {
+		rpc_password = os.Getenv("RPC_PASSWORD")
+	}
+
 	cert, err := os.ReadFile(rpc_cert)
 	if err != nil {
 		panic(err)
@@ -23,6 +38,12 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	// TODO: add ping check
+	// err = client.Ping()
+	// if err != nil {
+	// 	panic(err)
+	// }
 }
 
 func RunMain(args []string) error {
