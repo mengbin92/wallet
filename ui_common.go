@@ -52,7 +52,7 @@ func NewFolderButton(entry *widget.Entry, w fyne.Window) *widget.Button {
 			if lu == nil {
 				return
 			}
-			entry.SetText(lu.Path() + "/keystore")
+			entry.SetText(lu.Path())
 		}, w)
 
 		fd.SetLocation(listable)

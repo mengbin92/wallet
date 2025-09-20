@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	fyne.io/fyne/v2 v2.6.3
+	github.com/360EntSecGroup-Skylar/excelize v1.4.1
 	github.com/ethereum/go-ethereum v1.16.3
 	github.com/pkg/errors v0.9.1
 	github.com/tyler-smith/go-bip32 v1.0.0
@@ -45,6 +46,7 @@ require (
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25 // indirect
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.5.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

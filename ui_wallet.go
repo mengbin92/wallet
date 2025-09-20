@@ -19,11 +19,16 @@ func NewWalletTab(w fyne.Window) *container.TabItem {
 	chainEntry.SetText("bsc")
 
 	outEntry := widget.NewEntry()
-	outEntry.SetPlaceHolder("请选择存放keystore的目录...")
+	outEntry.SetPlaceHolder("账户信息以 v3 keystore 格式存储，请选择存放keystore的目录...")
 	browseBtn := NewFolderButton(outEntry, w)
 	row := container.NewBorder(nil, nil, nil, browseBtn, outEntry)
 
-	scroll, rt := NewLogBox(150)// 固定高度 150px
+	excleEntry := widget.NewEntry()
+	excleEntry.SetPlaceHolder("请选择存放Excel的目录...")
+	excelBtn := NewFolderButton(excleEntry, w)
+	rowExcle := container.NewBorder(nil, nil, nil, excelBtn, excleEntry)
+
+	scroll, rt := NewLogBox(150) // 固定高度 150px
 	lw := NewLogWriter(rt)
 	logger := log.New(lw, "[Wallet] ", log.LstdFlags)
 
@@ -50,21 +55,29 @@ func NewWalletTab(w fyne.Window) *container.TabItem {
 				logger.Println("地址: " + address.Address)
 			}
 
-			err = wallet.SaveToKeystore(addresses, "", outEntry.Text)
+			err = wallet.SaveToKeystore(addresses, "", outEntry.Text+"/keystore")
 			if err != nil {
 				logger.Println("keystore存储出错:", err.Error())
 				return
 			}
 			logger.Println("keystore存储完成")
+
+			err = wallet.SaveAddressesToExcel(addresses, excleEntry.Text+"/address.xlsx")
+			if err != nil {
+				logger.Println("地址存储到Excel出错:", err.Error())
+				return
+			}
+			logger.Println("地址存储到Excel完成")
 		}()
 	})
 
 	content := container.NewVBox(
 		widget.NewLabel("钱包创建"),
 		widget.NewForm(
-			widget.NewFormItem("数量", countEntry),
+			widget.NewFormItem("地址生成数量", countEntry),
 			widget.NewFormItem("底链", chainEntry),
-			widget.NewFormItem("输出目录", row),
+			widget.NewFormItem("账户信息保存目录", row),
+			widget.NewFormItem("地址信息保存目录", rowExcle),
 		),
 		createBtn,
 		scroll,

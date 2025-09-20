@@ -18,7 +18,7 @@ func CollectTokens(rpcURL, keystoreDir, password, tokenAddr, targetAddr string, 
 	}
 	defer client.Close()
 
-	keys, err := wallet.LoadAllKeys(keystoreDir, password)
+	keys, err := wallet.LoadAllKeys(keystoreDir, password, logger)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load keys (keystoreDir: %s)", keystoreDir)
 	}

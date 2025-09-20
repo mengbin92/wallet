@@ -10,10 +10,25 @@ import (
 type LogWriter struct {
 	rt *widget.RichText
 	mu sync.Mutex
+	ch chan string
 }
 
 func NewLogWriter(rt *widget.RichText) *LogWriter {
-	return &LogWriter{rt: rt}
+	lw := &LogWriter{
+		rt: rt,
+		ch: make(chan string, 100),
+	}
+
+	go func() {
+		for msg := range lw.ch {
+			rt.Segments = append(rt.Segments, &widget.TextSegment{
+				Text: msg,
+			})
+			rt.Refresh()
+		}
+	}()
+
+	return lw
 }
 
 func (lw *LogWriter) Write(p []byte) (n int, err error) {
