@@ -8,25 +8,12 @@ import (
 )
 
 type LogWriter struct {
-	entry *widget.Entry
-	mu    sync.Mutex
-	ch    chan string
+	rt *widget.RichText
+	mu sync.Mutex
 }
 
-func NewLogWriter(entry *widget.Entry) *LogWriter {
-	lw := &LogWriter{
-		entry: entry,
-		ch:    make(chan string, 100),
-	}
-	// 启动 goroutine 持续更新 UI
-	go func() {
-		for msg := range lw.ch {
-			entry.SetText(entry.Text + msg)
-			entry.CursorRow = len(entry.Text)
-			entry.Refresh()
-		}
-	}()
-	return lw
+func NewLogWriter(rt *widget.RichText) *LogWriter {
+	return &LogWriter{rt: rt}
 }
 
 func (lw *LogWriter) Write(p []byte) (n int, err error) {
@@ -35,10 +22,10 @@ func (lw *LogWriter) Write(p []byte) (n int, err error) {
 
 	msg := string(p)
 	fyne.DoAndWait(func() {
-		lw.entry.SetText(lw.entry.Text + msg)
-		lw.entry.CursorRow = len(lw.entry.Text)
-		lw.entry.Refresh()
+		lw.rt.Segments = append(lw.rt.Segments, &widget.TextSegment{
+			Text: msg,
+		})
+		lw.rt.Refresh()
 	})
 	return len(p), nil
 }
-

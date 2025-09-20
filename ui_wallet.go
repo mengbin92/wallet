@@ -23,8 +23,8 @@ func NewWalletTab(w fyne.Window) *container.TabItem {
 	browseBtn := NewFolderButton(outEntry, w)
 	row := container.NewBorder(nil, nil, nil, browseBtn, outEntry)
 
-	logBox := NewLogBox(10)
-	lw := NewLogWriter(logBox)
+	scroll, rt := NewLogBox(150)// 固定高度 150px
+	lw := NewLogWriter(rt)
 	logger := log.New(lw, "[Wallet] ", log.LstdFlags)
 
 	createBtn := widget.NewButton("生成钱包", func() {
@@ -67,7 +67,7 @@ func NewWalletTab(w fyne.Window) *container.TabItem {
 			widget.NewFormItem("输出目录", row),
 		),
 		createBtn,
-		logBox,
+		scroll,
 	)
 
 	return container.NewTabItem("钱包创建", content)

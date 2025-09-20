@@ -6,20 +6,27 @@ import (
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
-var DefaultWindowSize = fyne.NewSize(500, 400)
+var DefaultWindowSize = fyne.NewSize(600, 400)
 
 // NewLogBox 创建日志框
-func NewLogBox(minRows int) *widget.Entry {
-	box := widget.NewMultiLineEntry()
-	box.SetMinRowsVisible(minRows)
-	box.Disable() // 不允许用户输入
-	return box
+// NewLogBox 创建日志框（固定高度，可滚动）
+func NewLogBox(height float32) (*container.Scroll, *widget.RichText) {
+	rt := widget.NewRichText()
+	rt.Wrapping = fyne.TextWrapWord
+
+	// Scroll 容器，固定高度
+	scroll := container.NewScroll(rt)
+	scroll.SetMinSize(fyne.NewSize(400, height))
+
+	return scroll, rt
 }
+
 
 // NewFolderButton 浏览文件夹按钮
 func NewFolderButton(entry *widget.Entry, w fyne.Window) *widget.Button {
@@ -45,7 +52,7 @@ func NewFolderButton(entry *widget.Entry, w fyne.Window) *widget.Button {
 			if lu == nil {
 				return
 			}
-			entry.SetText(lu.Path()+"/keystore")
+			entry.SetText(lu.Path() + "/keystore")
 		}, w)
 
 		fd.SetLocation(listable)

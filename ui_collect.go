@@ -22,8 +22,8 @@ func NewCollectTab(w fyne.Window) *container.TabItem {
 	tokenEntry := widget.NewEntry()
 	toEntry := widget.NewEntry()
 
-	logBox := NewLogBox(10)
-	lw := NewLogWriter(logBox)
+	scroll, rt := NewLogBox(150)
+	lw := NewLogWriter(rt)
 	logger := log.New(lw, "[Collect] ", log.LstdFlags)
 
 	collectBtn := widget.NewButton("开始归集", func() {
@@ -51,7 +51,7 @@ func NewCollectTab(w fyne.Window) *container.TabItem {
 			widget.NewFormItem("接收地址", toEntry),
 		),
 		collectBtn,
-		logBox,
+		scroll,
 	)
 
 	return container.NewTabItem("代币归集", content)
