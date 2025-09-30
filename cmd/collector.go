@@ -23,6 +23,7 @@ func NewCollectorCmd() *cobra.Command {
 func collectCmd() *cobra.Command {
 	var (
 		rpcURL      string
+		mainKeyDir  string
 		keystoreDir string
 		password    string
 		tokenAddr   string
@@ -36,11 +37,12 @@ func collectCmd() *cobra.Command {
 			if tokenAddr == "" || targetAddr == "" {
 				return errors.Errorf("token address and target address are required (token: %s, target: %s, use --token and --to flags)", tokenAddr, targetAddr)
 			}
-			return collector.CollectTokens(rpcURL, keystoreDir, password, tokenAddr, targetAddr, log.Default())
+			return collector.CollectTokens(rpcURL, mainKeyDir, keystoreDir, password, tokenAddr, targetAddr, log.Default())
 		},
 	}
 
 	cmd.Flags().StringVar(&rpcURL, "rpc", "https://bsc-dataseed.binance.org", "RPC endpoint")
+	cmd.Flags().StringVar(&mainKeyDir, "mainkey", "mainkey", "main key directory")
 	cmd.Flags().StringVar(&keystoreDir, "keystore", "keystore", "keystore directory")
 	cmd.Flags().StringVar(&password, "password", "", "keystore password")
 	cmd.Flags().StringVar(&tokenAddr, "token", "", "token contract address")

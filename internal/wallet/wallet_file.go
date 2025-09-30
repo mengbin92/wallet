@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -43,7 +44,7 @@ func SaveToKeystore(addresses []*models.Address, password, outDir string) error 
 }
 
 // LoadAllKeys 从 keystore 目录加载所有地址
-func LoadAllKeys(keystoreDir, password string) ([]*keystore.Key, error) {
+func LoadAllKeys(keystoreDir, password string, logger *log.Logger) ([]*keystore.Key, error) {
 	entries, err := os.ReadDir(keystoreDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "read keystore dir")
@@ -56,16 +57,15 @@ func LoadAllKeys(keystoreDir, password string) ([]*keystore.Key, error) {
 			continue
 		}
 		keyPath := filepath.Join(keystoreDir, entry.Name())
-
 		keyJSON, err := os.ReadFile(keyPath)
 		if err != nil {
-			fmt.Printf("skip %s, read error: %v\n", keyPath, err)
+			logger.Printf("skip file: %s, read error: %s\n", keyPath, err)
 			continue
 		}
 
 		key, err := keystore.DecryptKey(keyJSON, password)
 		if err != nil {
-			fmt.Printf("skip %s, decrypt error: %v\n", keyPath, err)
+			logger.Printf("skip file: %s, decrypt error: %s\n", keyPath, err.Error())
 			continue
 		}
 

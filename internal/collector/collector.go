@@ -11,14 +11,19 @@ import (
 )
 
 // CollectTokens 遍历 keystore 归集所有代币
-func CollectTokens(rpcURL, keystoreDir, password, tokenAddr, targetAddr string, logger *log.Logger) error {
+func CollectTokens(rpcURL, mainKeystoreDir, keystoreDir, password, tokenAddr, targetAddr string, logger *log.Logger) error {
 	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return errors.Wrapf(err, "failed to connect rpc (rpcURL: %s)", rpcURL)
 	}
 	defer client.Close()
 
-	keys, err := wallet.LoadAllKeys(keystoreDir, password)
+	mainKey, err := wallet.LoadAllKeys(mainKeystoreDir, password, logger)
+	if err != nil {
+		return errors.Wrapf(err, "failed to load main key (mainKey: %s)", mainKeystoreDir)
+	}
+
+	keys, err := wallet.LoadAllKeys(keystoreDir, password, logger)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load keys (keystoreDir: %s)", keystoreDir)
 	}
@@ -38,7 +43,7 @@ func CollectTokens(rpcURL, keystoreDir, password, tokenAddr, targetAddr string, 
 
 		logger.Printf("collecting from %s, balance=%s", addr, balance.String())
 
-		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, balance, logger)
+		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, balance, mainKey[0].PrivateKey, logger)
 		if err != nil {
 			logger.Printf("transfer from %s failed: %v", addr, err)
 			continue
