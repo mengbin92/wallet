@@ -77,33 +77,6 @@ func TransferBNB(client *ethclient.Client, priv *ecdsa.PrivateKey, to common.Add
 	return signedTx, nil
 }
 
-// EnsureGasFee 确保 fromAddr 有足够的主币支付一次 ERC20 转账 Gas
-func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer common.Address, payerPriv *ecdsa.PrivateKey, logger *log.Logger) error {
-	// 粗略估算：ERC20 转账一般 gasLimit ~ 50,000
-	gasPrice, err := client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return errors.Wrap(err, "failed to suggest gas price")
-	}
-	needWei := new(big.Int).Mul(big.NewInt(50000), gasPrice)
-
-	balance, err := client.BalanceAt(context.Background(), fromAddr, nil)
-	if err != nil {
-		return errors.Wrap(err, "failed to get balance")
-	}
-
-	if balance.Cmp(needWei) >= 0 {
-		return nil // 足够，不需要补充
-	}
-
-	_, err = TransferBNB(client, payerPriv, fromAddr, needWei, logger)
-	if err != nil {
-		return errors.Wrap(err, "failed to transfer gas fee")
-	}
-	// 等待交易确认
-	time.Sleep(5 * time.Second)
-	return nil
-}
-
 // TransferToken 构造并发送 ERC20 转账交易
 func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAddr, to string, amount *big.Int, gasPayerPriv *ecdsa.PrivateKey, logger *log.Logger) (*types.Transaction, error) {
 	privKey := ks.PrivateKey
