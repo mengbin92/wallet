@@ -8,23 +8,25 @@ import (
 )
 
 type LogWriter struct {
-	rt *widget.RichText
-	mu sync.Mutex
-	ch chan string
+	entry *widget.Entry
+	mu    sync.Mutex
+	ch    chan string
 }
 
-func NewLogWriter(rt *widget.RichText) *LogWriter {
+func NewLogWriter(entry *widget.Entry) *LogWriter {
 	lw := &LogWriter{
-		rt: rt,
-		ch: make(chan string, 100),
+		entry: entry,
+		ch:    make(chan string, 100),
 	}
 
+	// 异步追加日志
 	go func() {
 		for msg := range lw.ch {
-			rt.Segments = append(rt.Segments, &widget.TextSegment{
-				Text: msg,
+			fyne.DoAndWait(func() {
+				lw.entry.SetText(lw.entry.Text + msg) // 直接拼接
+				lw.entry.CursorRow = len(lw.entry.Text) // 保持光标在最后（方便滚动）
+				lw.entry.Refresh()
 			})
-			rt.Refresh()
 		}
 	}()
 
@@ -36,11 +38,6 @@ func (lw *LogWriter) Write(p []byte) (n int, err error) {
 	defer lw.mu.Unlock()
 
 	msg := string(p)
-	fyne.DoAndWait(func() {
-		lw.rt.Segments = append(lw.rt.Segments, &widget.TextSegment{
-			Text: msg,
-		})
-		lw.rt.Refresh()
-	})
+	lw.ch <- msg // 通过 channel 异步写入
 	return len(p), nil
 }

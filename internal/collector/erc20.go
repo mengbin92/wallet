@@ -5,8 +5,11 @@ import (
 	"crypto/ecdsa"
 	"log"
 	"math/big"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +19,10 @@ import (
 	"github.com/pkg/errors"
 
 	ERC20 "github.com/mengbin92/wallet/pkg/contracts/erc20"
+)
+
+var (
+	instance *ERC20.ERC20
 )
 
 // GetTokenBalance 查询 ERC20 余额
@@ -71,7 +78,7 @@ func TransferBNB(client *ethclient.Client, priv *ecdsa.PrivateKey, to common.Add
 }
 
 // EnsureGasFee 确保 fromAddr 有足够的主币支付一次 ERC20 转账 Gas
-func EnsureGasFee(client *ethclient.Client, fromAddr, gasPayer common.Address, payerPriv *ecdsa.PrivateKey, logger *log.Logger) error {
+func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer common.Address, payerPriv *ecdsa.PrivateKey, logger *log.Logger) error {
 	// 粗略估算：ERC20 转账一般 gasLimit ~ 50,000
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -101,12 +108,7 @@ func EnsureGasFee(client *ethclient.Client, fromAddr, gasPayer common.Address, p
 func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAddr, to string, amount *big.Int, gasPayerPriv *ecdsa.PrivateKey, logger *log.Logger) (*types.Transaction, error) {
 	privKey := ks.PrivateKey
 	fromAddr := crypto.PubkeyToAddress(privKey.PublicKey)
-
-	// 确保有 gas 费
-	if err := EnsureGasFee(client, fromAddr, crypto.PubkeyToAddress(gasPayerPriv.PublicKey), gasPayerPriv, logger); err != nil {
-		logger.Println("EnsureGasFee failed: ", err.Error())
-		return nil, err
-	}
+	toAddr := common.HexToAddress(to)
 
 	// 检查代币余额
 	instance, err := ERC20.NewERC20(common.HexToAddress(tokenAddr), client)
@@ -119,9 +121,8 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 		logger.Println("BalanceOf failed: ", err.Error())
 		return nil, errors.Wrap(err, "failed to get token balance")
 	}
-	logger.Printf("token balance: %s\n", tokenBalance.String())
 
-	if tokenBalance.Cmp(amount) <= 0 {
+	if tokenBalance.Cmp(amount) < 0 {
 		logger.Printf("insufficient token balance: need %d, have %d\n", amount, tokenBalance)
 		return nil, errors.Errorf("insufficient token balance: need %s, have %s", amount, tokenBalance)
 	}
@@ -131,14 +132,48 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 		return nil, errors.Wrap(err, "failed to get chainID")
 	}
 
+	// 预估gas
+	parsedABI, err := abi.JSON(strings.NewReader(ERC20.ERC20ABI))
+	if err != nil{
+		logger.Println("abi.JSON failed: ", err.Error())
+		return nil, errors.Wrap(err, "failed to parse ABI")
+	}
+	data,err := parsedABI.Pack("transfer", toAddr, amount)
+	if err != nil{
+		logger.Println("abi.Pack failed: ", err.Error())
+		return nil, errors.Wrap(err, "failed to pack ABI")
+	}
+	msg := ethereum.CallMsg{
+		From: fromAddr,
+		To:   &toAddr,
+		Data: data, // ABI 编码的数据
+	}
+	estimatedGas, err := client.EstimateGas(context.Background(), msg)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to estimate gas for ERC20 transfer")
+	}
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to suggest gas price")
+	}
+	needWei := new(big.Int).Mul(big.NewInt(int64(estimatedGas)), gasPrice)
+	logger.Printf("ERC20 transfer estimated gas cost: %s\n", needWei.String())
+
+	_, err = TransferBNB(client, gasPayerPriv, toAddr, needWei, logger)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to transfer gas fee")
+	}
+	time.Sleep(5 * time.Second)
+
 	auth, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create transactor")
 	}
-	auth.GasPrice, _ = client.SuggestGasPrice(context.Background())
+	auth.GasPrice = gasPrice
+	auth.GasLimit = estimatedGas
 
 	// 发起转账
-	tx, err := instance.Transfer(auth, common.HexToAddress(to), amount)
+	tx, err := instance.Transfer(auth, toAddr, amount)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send token transfer tx")
 	}

@@ -16,6 +16,8 @@ func NewCollectTab(w fyne.Window) *container.TabItem {
 
 	mainKeyEntry := widget.NewEntry()
 	mainKeyEntry.SetPlaceHolder("请输入主账户的目录...")
+	mainKeyBtn := NewFolderButton(mainKeyEntry, w)
+	mainKeyRow := container.NewBorder(nil, nil, nil, mainKeyBtn, mainKeyEntry)
 
 	ksEntry := widget.NewEntry()
 	ksEntry.SetPlaceHolder("请选择存放keystore的目录...")
@@ -49,7 +51,7 @@ func NewCollectTab(w fyne.Window) *container.TabItem {
 		widget.NewLabel("代币归集"),
 		widget.NewForm(
 			widget.NewFormItem("RPC", rpcEntry),
-			widget.NewFormItem("主私钥", mainKeyEntry),
+			widget.NewFormItem("主账户目录", mainKeyRow),
 			widget.NewFormItem("Keystore", row),
 			widget.NewFormItem("Token合约地址", tokenEntry),
 			widget.NewFormItem("接收地址", toEntry),

@@ -16,15 +16,19 @@ var DefaultWindowSize = fyne.NewSize(600, 400)
 
 // NewLogBox 创建日志框
 // NewLogBox 创建日志框（固定高度，可滚动）
-func NewLogBox(height float32) (*container.Scroll, *widget.RichText) {
-	rt := widget.NewRichText()
-	rt.Wrapping = fyne.TextWrapWord
+// NewLogBox 创建日志框（可复制内容）
+func NewLogBox(height float32) (*container.Scroll, *widget.Entry) {
+    entry := widget.NewMultiLineEntry()
+    entry.SetPlaceHolder("日志输出...")
+    entry.Wrapping = fyne.TextWrapWord
+	entry.OnChanged = func(s string) {
+	}
 
-	// Scroll 容器，固定高度
-	scroll := container.NewScroll(rt)
-	scroll.SetMinSize(fyne.NewSize(400, height))
 
-	return scroll, rt
+    scroll := container.NewScroll(entry)
+    scroll.SetMinSize(fyne.NewSize(400, height))
+
+    return scroll, entry
 }
 
 

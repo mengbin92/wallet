@@ -18,7 +18,7 @@ func CollectTokens(rpcURL, mainKeystoreDir, keystoreDir, password, tokenAddr, ta
 	}
 	defer client.Close()
 
-	mainKey, err := wallet.LoadKey(mainKeystoreDir, password, logger)
+	mainKey, err := wallet.LoadAllKeys(mainKeystoreDir, password, logger)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load main key (mainKey: %s)", mainKeystoreDir)
 	}
@@ -43,7 +43,7 @@ func CollectTokens(rpcURL, mainKeystoreDir, keystoreDir, password, tokenAddr, ta
 
 		logger.Printf("collecting from %s, balance=%s", addr, balance.String())
 
-		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, balance, mainKey.PrivateKey, logger)
+		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, balance, mainKey[0].PrivateKey, logger)
 		if err != nil {
 			logger.Printf("transfer from %s failed: %v", addr, err)
 			continue
