@@ -60,13 +60,7 @@ func LoadAllKeys(keystoreDir, password string, logger *log.Logger) ([]*keystore.
 		keyPath := filepath.Join(keystoreDir, entry.Name())
 
 		logger.Printf("loading key: %s", keyPath)
-		keyJSON, err := os.ReadFile(keyPath)
-		if err != nil {
-			logger.Printf("skip %s, read error: %v\n", keyPath, err)
-			continue
-		}
-
-		key, err := keystore.DecryptKey(keyJSON, password)
+		key, err := LoadKey(keyPath, password,logger)
 		if err != nil {
 			logger.Printf("skip %s, decrypt error: %v\n", keyPath, err)
 			continue
@@ -80,6 +74,22 @@ func LoadAllKeys(keystoreDir, password string, logger *log.Logger) ([]*keystore.
 	}
 
 	return keys, nil
+}
+
+func LoadKey(keyPath, password string, logger *log.Logger) (*keystore.Key, error) {
+	logger.Printf("loading key: %s", keyPath)
+	keyJSON, err := os.ReadFile(keyPath)
+	if err != nil {
+		logger.Printf("file %s, read error: %s\n", keyPath, err)
+		return nil, err
+	}
+
+	key, err := keystore.DecryptKey(keyJSON, password)
+	if err != nil {
+		logger.Printf("file %s, decrypt error: %s\n", keyPath, err.Error())
+		return nil, err
+	}
+	return key, nil
 }
 
 // ExportPrivateKeyHex 返回私钥 hex 字符串
