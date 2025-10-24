@@ -21,9 +21,115 @@ import (
 	ERC20 "github.com/mengbin92/wallet/pkg/contracts/erc20"
 )
 
-var (
-	instance *ERC20.ERC20
+const(
+	REQUIREDCONFIRMATIONS = 6
 )
+
+// WaitForTransactionConfirmation 等待交易确认，支持超时和进度反馈
+func WaitForTransactionConfirmation(client *ethclient.Client, txHash common.Hash, maxWaitTime time.Duration, logger *log.Logger) error {
+	ctx, cancel := context.WithTimeout(context.Background(), maxWaitTime)
+	defer cancel()
+
+	ticker := time.NewTicker(2 * time.Second) // 每2秒检查一次
+	defer ticker.Stop()
+
+	startTime := time.Now()
+	attempts := 0
+	var receipt *types.Receipt
+	var receiptErr error
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.Errorf("transaction confirmation timeout after %v", maxWaitTime)
+		case <-ticker.C:
+			attempts++
+			elapsed := time.Since(startTime)
+
+			// 获取交易收据
+			receipt, receiptErr = client.TransactionReceipt(ctx, txHash)
+			if receiptErr == nil && receipt != nil {
+				// 交易已被打包，检查状态
+				if receipt.Status == types.ReceiptStatusSuccessful {
+					// 获取当前区块号，计算确认数
+					currentBlock, err := client.BlockNumber(ctx)
+					if err != nil {
+						logger.Printf("无法获取当前区块号，但交易已成功: %s", txHash.Hex())
+						return nil
+					}
+
+					confirmations := currentBlock - receipt.BlockNumber.Uint64()
+					logger.Printf("交易确认成功: %s (耗时: %v, 确认数: %d)",
+						txHash.Hex(), elapsed, confirmations)
+
+					// 对于BNB转账，1个确认通常就足够了
+					// 对于大额转账，可以考虑等待更多确认
+					return nil
+				} else {
+					return errors.Errorf("transaction failed with status: %d", receipt.Status)
+				}
+			} else if receiptErr != nil {
+				// 交易还未被确认，继续等待
+				// 提供进度反馈
+				if attempts%5 == 0 { // 每10秒提供一次进度反馈
+					logger.Printf("等待交易确认中... (已等待: %v, 尝试次数: %d) - 交易尚未被打包", elapsed, attempts)
+				}
+			}
+		}
+	}
+}
+
+// WaitForTransactionConfirmationWithBlocks 等待交易确认，支持自定义确认数
+func WaitForTransactionConfirmationWithBlocks(client *ethclient.Client, txHash common.Hash, requiredConfirmations uint64, maxWaitTime time.Duration, logger *log.Logger) error {
+	ctx, cancel := context.WithTimeout(context.Background(), maxWaitTime)
+	defer cancel()
+
+	ticker := time.NewTicker(3 * time.Second) // 每3秒检查一次
+	defer ticker.Stop()
+
+	startTime := time.Now()
+	attempts := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.Errorf("transaction confirmation timeout after %v", maxWaitTime)
+		case <-ticker.C:
+			attempts++
+			elapsed := time.Since(startTime)
+
+			// 获取交易收据
+			receipt, err := client.TransactionReceipt(ctx, txHash)
+			if err == nil && receipt != nil {
+				// 交易已被打包，检查状态
+				if receipt.Status == types.ReceiptStatusSuccessful {
+					// 获取当前区块号，计算确认数
+					currentBlock, err := client.BlockNumber(ctx)
+					if err != nil {
+						logger.Printf("无法获取当前区块号，但交易已成功: %s", txHash.Hex())
+						return nil
+					}
+
+					confirmations := currentBlock - receipt.BlockNumber.Uint64()
+					logger.Printf("交易确认进度: %s (确认数: %d/%d, 耗时: %v)",
+						txHash.Hex(), confirmations, requiredConfirmations, elapsed)
+
+					if confirmations >= requiredConfirmations {
+						logger.Printf("交易确认完成: %s (确认数: %d)", txHash.Hex(), confirmations)
+						return nil
+					}
+				} else {
+					return errors.Errorf("transaction failed with status: %d", receipt.Status)
+				}
+			} else if err != nil {
+				// 交易还未被确认，继续等待
+				if attempts%5 == 0 { // 每15秒提供一次进度反馈
+					logger.Printf("等待交易确认中... (已等待: %v, 尝试次数: %d) - 交易尚未被打包", elapsed, attempts)
+				}
+			}
+		}
+	}
+}
 
 // GetTokenBalance 查询 ERC20 余额
 func GetTokenBalance(client *ethclient.Client, tokenAddr, owner string) (*big.Int, error) {
@@ -95,12 +201,20 @@ func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer
 		return nil // 足够，不需要补充
 	}
 
-	_, err = TransferBNB(client, payerPriv, fromAddr, needWei, logger)
+	logger.Printf("账户 %s 余额不足，需要补充 %s wei 作为 Gas 费用", fromAddr.Hex(), needWei.String())
+
+	tx, err := TransferBNB(client, payerPriv, fromAddr, needWei, logger)
 	if err != nil {
 		return errors.Wrap(err, "failed to transfer gas fee")
 	}
-	// 等待交易确认
-	time.Sleep(5 * time.Second)
+
+	// 等待BNB转账确认，最多等待60秒
+	logger.Printf("等待BNB转账确认: %s", tx.Hash().Hex())
+	err = WaitForTransactionConfirmation(client, tx.Hash(), 60*time.Second, logger)
+	if err != nil {
+		return errors.Wrap(err, "BNB转账确认超时或失败")
+	}
+
 	return nil
 }
 
@@ -134,12 +248,12 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 
 	// 预估gas
 	parsedABI, err := abi.JSON(strings.NewReader(ERC20.ERC20ABI))
-	if err != nil{
+	if err != nil {
 		logger.Println("abi.JSON failed: ", err.Error())
 		return nil, errors.Wrap(err, "failed to parse ABI")
 	}
-	data,err := parsedABI.Pack("transfer", toAddr, amount)
-	if err != nil{
+	data, err := parsedABI.Pack("transfer", toAddr, amount)
+	if err != nil {
 		logger.Println("abi.Pack failed: ", err.Error())
 		return nil, errors.Wrap(err, "failed to pack ABI")
 	}
@@ -159,11 +273,18 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 	needWei := new(big.Int).Mul(big.NewInt(int64(estimatedGas)), gasPrice)
 	logger.Printf("ERC20 transfer estimated gas cost: %s\n", needWei.String())
 
-	_, err = TransferBNB(client, gasPayerPriv, toAddr, needWei, logger)
+	logger.Printf("为ERC20转账补充Gas费用: %s wei", needWei.String())
+	tx, err := TransferBNB(client, gasPayerPriv, toAddr, needWei, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to transfer gas fee")
 	}
-	time.Sleep(5 * time.Second)
+
+	// 等待BNB转账确认，最多等待60秒
+	logger.Printf("等待Gas费用转账确认: %s", tx.Hash().Hex())
+	err = WaitForTransactionConfirmationWithBlocks(client, tx.Hash(), REQUIREDCONFIRMATIONS, 60*time.Second, logger)
+	if err != nil {
+		return nil, errors.Wrap(err, "Gas费用转账确认超时或失败")
+	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	if err != nil {
@@ -173,13 +294,13 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 	auth.GasLimit = estimatedGas
 
 	// 发起转账
-	tx, err := instance.Transfer(auth, toAddr, amount)
+	tokenTx, err := instance.Transfer(auth, toAddr, amount)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send token transfer tx")
 	}
 
 	logger.Printf("Token 转账已发送: %s -> %s, amount: %s, txHash: %s",
-		fromAddr.Hex(), to, amount, tx.Hash().Hex(),
+		fromAddr.Hex(), to, amount, tokenTx.Hash().Hex(),
 	)
-	return tx, nil
+	return tokenTx, nil
 }
