@@ -12,7 +12,7 @@ import (
 
 func NewCollectTab(w fyne.Window) *container.TabItem {
 	rpcEntry := widget.NewEntry()
-	rpcEntry.SetText("http://127.0.0.1:8545")
+	rpcEntry.SetText("https://public-bsc-mainnet.fastnode.io")
 
 	mainKeyEntry := widget.NewEntry()
 	mainKeyEntry.SetPlaceHolder("请输入主账户的目录...")
@@ -27,7 +27,7 @@ func NewCollectTab(w fyne.Window) *container.TabItem {
 	tokenEntry := widget.NewEntry()
 	toEntry := widget.NewEntry()
 
-	scroll, rt := NewLogBox(150)
+	scroll, rt := NewLogBox(200)
 	lw := NewLogWriter(rt)
 	logger := log.New(lw, "[Collect] ", log.LstdFlags)
 

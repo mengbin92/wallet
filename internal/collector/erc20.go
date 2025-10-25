@@ -21,8 +21,12 @@ import (
 	ERC20 "github.com/mengbin92/wallet/pkg/contracts/erc20"
 )
 
-const(
+const (
 	REQUIREDCONFIRMATIONS = 6
+)
+
+var (
+	DECIMALS = big.NewInt(10).Exp(big.NewInt(10), big.NewInt(18), nil)
 )
 
 // WaitForTransactionConfirmation 等待交易确认，支持超时和进度反馈
@@ -185,12 +189,12 @@ func TransferBNB(client *ethclient.Client, priv *ecdsa.PrivateKey, to common.Add
 
 // EnsureGasFee 确保 fromAddr 有足够的主币支付一次 ERC20 转账 Gas
 func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer common.Address, payerPriv *ecdsa.PrivateKey, logger *log.Logger) error {
-	// 粗略估算：ERC20 转账一般 gasLimit ~ 50,000
+	// 保守估算：ERC20 转账一般 gasLimit ~ 65,000 (包含20%缓冲)
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "failed to suggest gas price")
 	}
-	needWei := new(big.Int).Mul(big.NewInt(50000), gasPrice)
+	needWei := new(big.Int).Mul(big.NewInt(65000), gasPrice)
 
 	balance, err := client.BalanceAt(context.Background(), fromAddr, nil)
 	if err != nil {
@@ -219,7 +223,7 @@ func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer
 }
 
 // TransferToken 构造并发送 ERC20 转账交易
-func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAddr, to string, amount *big.Int, gasPayerPriv *ecdsa.PrivateKey, logger *log.Logger) (*types.Transaction, error) {
+func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAddr, to string, gasPayerPriv *ecdsa.PrivateKey, logger *log.Logger) (*types.Transaction, error) {
 	privKey := ks.PrivateKey
 	fromAddr := crypto.PubkeyToAddress(privKey.PublicKey)
 	toAddr := common.HexToAddress(to)
@@ -236,11 +240,6 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 		return nil, errors.Wrap(err, "failed to get token balance")
 	}
 
-	if tokenBalance.Cmp(amount) < 0 {
-		logger.Printf("insufficient token balance: need %d, have %d\n", amount, tokenBalance)
-		return nil, errors.Errorf("insufficient token balance: need %s, have %s", amount, tokenBalance)
-	}
-
 	chainID, err := client.NetworkID(context.Background())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get chainID")
@@ -252,7 +251,7 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 		logger.Println("abi.JSON failed: ", err.Error())
 		return nil, errors.Wrap(err, "failed to parse ABI")
 	}
-	data, err := parsedABI.Pack("transfer", toAddr, amount)
+	data, err := parsedABI.Pack("transfer", toAddr, tokenBalance)
 	if err != nil {
 		logger.Println("abi.Pack failed: ", err.Error())
 		return nil, errors.Wrap(err, "failed to pack ABI")
@@ -270,20 +269,36 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to suggest gas price")
 	}
-	needWei := new(big.Int).Mul(big.NewInt(int64(estimatedGas)), gasPrice)
-	logger.Printf("ERC20 transfer estimated gas cost: %s\n", needWei.String())
+	// 计算带缓冲的gas费用
+	gasWithBuffer := new(big.Int).Div(new(big.Int).Mul(big.NewInt(int64(estimatedGas)), big.NewInt(230)), big.NewInt(100))
+	needWei := new(big.Int).Mul(gasWithBuffer, gasPrice)
+	logger.Printf("ERC20 transfer estimated gas cost: %s (带230%%缓冲)\n", needWei.String())
 
-	logger.Printf("为ERC20转账补充Gas费用: %s wei", needWei.String())
-	tx, err := TransferBNB(client, gasPayerPriv, fromAddr, needWei, logger)
+	// 检查fromAddr的BNB余额是否足够
+	bnbBalance, err := client.BalanceAt(context.Background(), fromAddr, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to transfer gas fee")
+		return nil, errors.Wrap(err, "failed to get BNB balance")
 	}
 
-	// 等待BNB转账确认，最多等待60秒
-	logger.Printf("等待Gas费用转账确认: %s", tx.Hash().Hex())
-	err = WaitForTransactionConfirmationWithBlocks(client, tx.Hash(), REQUIREDCONFIRMATIONS, 60*time.Second, logger)
-	if err != nil {
-		return nil, errors.Wrap(err, "Gas费用转账确认超时或失败")
+	if bnbBalance.Cmp(needWei) < 0 {
+		// 计算差额：需要多少 - 现有多少 = 差额
+		deficit := new(big.Int).Sub(needWei, bnbBalance)
+		logger.Printf("账户 %s BNB余额不足，现有: %s wei，需要: %s wei，差额: %s wei",
+			fromAddr.Hex(), bnbBalance.String(), needWei.String(), deficit.String())
+
+		tx, err := TransferBNB(client, gasPayerPriv, fromAddr, deficit, logger)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to transfer gas fee")
+		}
+
+		// 等待BNB转账确认，最多等待60秒
+		logger.Printf("等待Gas费用差额转账确认: %s", tx.Hash().Hex())
+		err = WaitForTransactionConfirmationWithBlocks(client, tx.Hash(), REQUIREDCONFIRMATIONS, 60*time.Second, logger)
+		if err != nil {
+			return nil, errors.Wrap(err, "Gas费用差额转账确认超时或失败")
+		}
+	} else {
+		logger.Printf("账户 %s BNB余额充足: %s wei，无需补充", fromAddr.Hex(), bnbBalance.String())
 	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
@@ -291,16 +306,17 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 		return nil, errors.Wrap(err, "failed to create transactor")
 	}
 	auth.GasPrice = gasPrice
-	auth.GasLimit = estimatedGas
+	// 使用已经计算好的带缓冲的gas值
+	auth.GasLimit = gasWithBuffer.Uint64()
 
 	// 发起转账
-	tokenTx, err := instance.Transfer(auth, toAddr, amount)
+	tokenTx, err := instance.Transfer(auth, toAddr, tokenBalance)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send token transfer tx")
 	}
 
 	logger.Printf("Token 转账已发送: %s -> %s, amount: %s, txHash: %s",
-		fromAddr.Hex(), to, amount, tokenTx.Hash().Hex(),
+		fromAddr.Hex(), to, new(big.Int).Div(tokenBalance, DECIMALS).String(), tokenTx.Hash().Hex(),
 	)
 	return tokenTx, nil
 }

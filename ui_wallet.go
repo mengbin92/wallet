@@ -28,7 +28,7 @@ func NewWalletTab(w fyne.Window) *container.TabItem {
 	excelBtn := NewFolderButton(excleEntry, w)
 	rowExcle := container.NewBorder(nil, nil, nil, excelBtn, excleEntry)
 
-	scroll, rt := NewLogBox(150) // 固定高度 150px
+	scroll, rt := NewLogBox(200) // 固定高度 200px
 	lw := NewLogWriter(rt)
 	logger := log.New(lw, "[Wallet] ", log.LstdFlags)
 
