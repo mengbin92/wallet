@@ -45,7 +45,12 @@ func NewWalletTab(w fyne.Window) *container.TabItem {
 				return
 			}
 
-			addresses, err := wallet.DeriveBatchEVM(chainEntry.Text, "", countEntry.Text, count)
+			mnemonic, err := wallet.GenerateMnemonic()
+			if err != nil {
+				logger.Println("生成助记词失败:", err.Error())
+				return
+			}
+			addresses, err := wallet.DeriveBatchEVM(chainEntry.Text, mnemonic, countEntry.Text, count)
 			if err != nil {
 				logger.Println("地址生成出错:", err.Error())
 				return
