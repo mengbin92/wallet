@@ -274,7 +274,7 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 	logger.Printf("ERC20 transfer estimated gas cost: %s\n", needWei.String())
 
 	logger.Printf("为ERC20转账补充Gas费用: %s wei", needWei.String())
-	tx, err := TransferBNB(client, gasPayerPriv, toAddr, needWei, logger)
+	tx, err := TransferBNB(client, gasPayerPriv, fromAddr, needWei, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to transfer gas fee")
 	}
