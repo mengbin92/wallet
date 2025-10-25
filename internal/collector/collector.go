@@ -41,9 +41,9 @@ func CollectTokens(rpcURL, mainKeystoreDir, keystoreDir, password, tokenAddr, ta
 			continue
 		}
 
-		logger.Printf("collecting from %s, balance=%s", addr, balance.String())
+		logger.Printf("collecting from %s, balance=%s", addr, new(big.Int).Div(balance, DECIMALS).String())
 
-		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, balance, mainKey[0].PrivateKey, logger)
+		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, mainKey[0].PrivateKey, logger)
 		if err != nil {
 			logger.Printf("transfer from %s failed: %v", addr, err)
 			continue
