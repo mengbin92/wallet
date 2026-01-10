@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/mengbin92/wallet/internal/wallet"
 	"github.com/mengbin92/wallet/utils"
@@ -41,15 +43,32 @@ func createCmd() *cobra.Command {
 				}
 			}
 
-			// 加密助记词
+			// Securely handle mnemonic output
 			if password != "" {
 				encMnemonic, err := utils.AesEncrypt([]byte(mnemonic), password)
 				if err != nil {
 					return err
 				}
-				log.Printf("[INFO] Encrypted mnemonic: %s\n", encMnemonic)
+				// Only show truncated version in logs
+				truncated := encMnemonic
+				if len(encMnemonic) > 20 {
+					truncated = encMnemonic[:20] + "..."
+				}
+				log.Printf("[INFO] Encrypted mnemonic: %s\n", truncated)
+				log.Printf("[INFO] Full encrypted mnemonic stored to file: mnemonic.enc\n")
+				// Save encrypted mnemonic to file
+				if err := os.WriteFile("mnemonic.enc", []byte(encMnemonic), 0600); err != nil {
+					log.Printf("[WARN] Failed to save encrypted mnemonic to file: %v\n", err)
+				}
 			} else {
-				log.Printf("[INFO] Mnemonic: %s\n", mnemonic)
+				// Output to stderr with security warning (not to logs)
+				fmt.Fprintf(os.Stderr, "\n╔════════════════════════════════════════════════════════════╗\n")
+				fmt.Fprintf(os.Stderr, "║  ⚠️  WARNING: MNEMONIC NOT ENCRYPTED - STORE SECURELY!      ║\n")
+				fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════╝\n\n")
+				fmt.Fprintf(os.Stderr, "Mnemonic: %s\n\n", mnemonic)
+				fmt.Fprintf(os.Stderr, "📝 IMPORTANT: Write this down and store it securely.\n")
+				fmt.Fprintf(os.Stderr, "   Anyone with access to this phrase can control your wallets.\n")
+				fmt.Fprintf(os.Stderr, "   Do NOT share it with anyone or store it in logs.\n\n")
 			}
 
 			addresses, err := wallet.DeriveBatchEVM(chain, mnemonic, password, count)

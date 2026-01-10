@@ -22,73 +22,38 @@ import (
 )
 
 const (
-	REQUIREDCONFIRMATIONS = 6
+	// DefaultRequiredConfirmations is the default number of confirmations for token transfers
+	DefaultRequiredConfirmations = 6
 )
 
 var (
 	DECIMALS = big.NewInt(10).Exp(big.NewInt(10), big.NewInt(18), nil)
 )
 
-// WaitForTransactionConfirmation 等待交易确认，支持超时和进度反馈
-func WaitForTransactionConfirmation(client *ethclient.Client, txHash common.Hash, maxWaitTime time.Duration, logger *log.Logger) error {
-	ctx, cancel := context.WithTimeout(context.Background(), maxWaitTime)
-	defer cancel()
-
-	ticker := time.NewTicker(2 * time.Second) // 每2秒检查一次
-	defer ticker.Stop()
-
-	startTime := time.Now()
-	attempts := 0
-	var receipt *types.Receipt
-	var receiptErr error
-
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.Errorf("transaction confirmation timeout after %v", maxWaitTime)
-		case <-ticker.C:
-			attempts++
-			elapsed := time.Since(startTime)
-
-			// 获取交易收据
-			receipt, receiptErr = client.TransactionReceipt(ctx, txHash)
-			if receiptErr == nil && receipt != nil {
-				// 交易已被打包，检查状态
-				if receipt.Status == types.ReceiptStatusSuccessful {
-					// 获取当前区块号，计算确认数
-					currentBlock, err := client.BlockNumber(ctx)
-					if err != nil {
-						logger.Printf("无法获取当前区块号，但交易已成功: %s", txHash.Hex())
-						return nil
-					}
-
-					confirmations := currentBlock - receipt.BlockNumber.Uint64()
-					logger.Printf("交易确认成功: %s (耗时: %v, 确认数: %d)",
-						txHash.Hex(), elapsed, confirmations)
-
-					// 对于BNB转账，1个确认通常就足够了
-					// 对于大额转账，可以考虑等待更多确认
-					return nil
-				} else {
-					return errors.Errorf("transaction failed with status: %d", receipt.Status)
-				}
-			} else if receiptErr != nil {
-				// 交易还未被确认，继续等待
-				// 提供进度反馈
-				if attempts%5 == 0 { // 每10秒提供一次进度反馈
-					logger.Printf("等待交易确认中... (已等待: %v, 尝试次数: %d) - 交易尚未被打包", elapsed, attempts)
-				}
-			}
-		}
-	}
+// WaitForConfirmationConfig holds configuration for transaction confirmation
+type WaitForConfirmationConfig struct {
+	RequiredConfirmations uint64
+	CheckInterval         time.Duration
+	MaxWaitTime           time.Duration
+	ProgressInterval      int
 }
 
-// WaitForTransactionConfirmationWithBlocks 等待交易确认，支持自定义确认数
-func WaitForTransactionConfirmationWithBlocks(client *ethclient.Client, txHash common.Hash, requiredConfirmations uint64, maxWaitTime time.Duration, logger *log.Logger) error {
-	ctx, cancel := context.WithTimeout(context.Background(), maxWaitTime)
+// WaitForTransactionConfirmation waits for transaction confirmation with configurable options
+func WaitForTransactionConfirmation(client *ethclient.Client, txHash common.Hash, cfg *WaitForConfirmationConfig, logger *log.Logger) error {
+	if cfg == nil {
+		// Default: 1 confirmation, 2s interval, 60s timeout
+		cfg = &WaitForConfirmationConfig{
+			RequiredConfirmations: 1,
+			CheckInterval:         2 * time.Second,
+			MaxWaitTime:           60 * time.Second,
+			ProgressInterval:      5,
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.MaxWaitTime)
 	defer cancel()
 
-	ticker := time.NewTicker(3 * time.Second) // 每3秒检查一次
+	ticker := time.NewTicker(cfg.CheckInterval)
 	defer ticker.Stop()
 
 	startTime := time.Now()
@@ -97,7 +62,7 @@ func WaitForTransactionConfirmationWithBlocks(client *ethclient.Client, txHash c
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.Errorf("transaction confirmation timeout after %v", maxWaitTime)
+			return errors.Errorf("transaction confirmation timeout after %v", cfg.MaxWaitTime)
 		case <-ticker.C:
 			attempts++
 			elapsed := time.Since(startTime)
@@ -115,11 +80,22 @@ func WaitForTransactionConfirmationWithBlocks(client *ethclient.Client, txHash c
 					}
 
 					confirmations := currentBlock - receipt.BlockNumber.Uint64()
-					logger.Printf("交易确认进度: %s (确认数: %d/%d, 耗时: %v)",
-						txHash.Hex(), confirmations, requiredConfirmations, elapsed)
 
-					if confirmations >= requiredConfirmations {
-						logger.Printf("交易确认完成: %s (确认数: %d)", txHash.Hex(), confirmations)
+					// 如果需要多个确认，显示进度
+					if cfg.RequiredConfirmations > 1 {
+						logger.Printf("交易确认进度: %s (确认数: %d/%d, 耗时: %v)",
+							txHash.Hex(), confirmations, cfg.RequiredConfirmations, elapsed)
+
+						if confirmations >= cfg.RequiredConfirmations {
+							logger.Printf("交易确认完成: %s (确认数: %d)", txHash.Hex(), confirmations)
+							return nil
+						}
+						// 继续等待更多确认
+						continue
+					} else {
+						// 只需要1个确认，直接返回
+						logger.Printf("交易确认成功: %s (耗时: %v, 确认数: %d)",
+							txHash.Hex(), elapsed, confirmations)
 						return nil
 					}
 				} else {
@@ -127,12 +103,34 @@ func WaitForTransactionConfirmationWithBlocks(client *ethclient.Client, txHash c
 				}
 			} else if err != nil {
 				// 交易还未被确认，继续等待
-				if attempts%5 == 0 { // 每15秒提供一次进度反馈
+				if attempts%cfg.ProgressInterval == 0 {
 					logger.Printf("等待交易确认中... (已等待: %v, 尝试次数: %d) - 交易尚未被打包", elapsed, attempts)
 				}
 			}
 		}
 	}
+}
+
+// Deprecated: Use WaitForTransactionConfirmation with config instead
+// WaitForTransactionConfirmationSimple waits for transaction with default 1 confirmation
+func WaitForTransactionConfirmationSimple(client *ethclient.Client, txHash common.Hash, maxWaitTime time.Duration, logger *log.Logger) error {
+	return WaitForTransactionConfirmation(client, txHash, &WaitForConfirmationConfig{
+		RequiredConfirmations: 1,
+		CheckInterval:         2 * time.Second,
+		MaxWaitTime:           maxWaitTime,
+		ProgressInterval:      5,
+	}, logger)
+}
+
+// Deprecated: Use WaitForTransactionConfirmation with config instead
+// WaitForTransactionConfirmationWithBlocks waits for specified number of confirmations
+func WaitForTransactionConfirmationWithBlocks(client *ethclient.Client, txHash common.Hash, requiredConfirmations uint64, maxWaitTime time.Duration, logger *log.Logger) error {
+	return WaitForTransactionConfirmation(client, txHash, &WaitForConfirmationConfig{
+		RequiredConfirmations: requiredConfirmations,
+		CheckInterval:         3 * time.Second,
+		MaxWaitTime:           maxWaitTime,
+		ProgressInterval:      5,
+	}, logger)
 }
 
 // GetTokenBalance 查询 ERC20 余额
@@ -258,7 +256,7 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 
 		// 等待BNB转账确认，最多等待60秒
 		logger.Printf("等待Gas费用差额转账确认: %s", tx.Hash().Hex())
-		err = WaitForTransactionConfirmationWithBlocks(client, tx.Hash(), REQUIREDCONFIRMATIONS, 60*time.Second, logger)
+		err = WaitForTransactionConfirmationWithBlocks(client, tx.Hash(), DefaultRequiredConfirmations, 60*time.Second, logger)
 		if err != nil {
 			return nil, errors.Wrap(err, "Gas费用差额转账确认超时或失败")
 		}
