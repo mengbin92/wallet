@@ -104,3 +104,33 @@ func TestConfig() *Config {
 	cfg.Confirmation.MaxWaitTime = 30 * time.Second
 	return cfg
 }
+
+// DevConfig returns development configuration for geth -dev mode
+// In dev mode, blocks are not mined automatically, so we use minimal confirmations
+func DevConfig() *Config {
+	return &Config{
+		Gas: GasConfig{
+			NativeTransferLimit:   21000,
+			ERC20BufferPercentage: 230,
+			NativeBufferPercentage: 120,
+			PriceCacheTTL:         30 * time.Second,
+		},
+		Confirmation: ConfirmationConfig{
+			Default:        0, // 0 confirmations in dev mode (transaction in mempool is enough)
+			TokenTransfer:  0,
+			NativeTransfer: 0,
+			CheckInterval:  1 * time.Second,
+			MaxWaitTime:    10 * time.Second, // Short timeout for dev mode
+			ProgressInterval: 2,
+		},
+		Network: NetworkConfig{
+			RPCTimeout:    10 * time.Second,
+			MaxRetries:    1, // Fewer retries in dev mode
+			RetryBaseDelay: 500 * time.Millisecond,
+		},
+		Concurrency: ConcurrencyConfig{
+			MaxWorkers: 1, // Single worker in dev mode to avoid race conditions
+			Enabled:    true,
+		},
+	}
+}

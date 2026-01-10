@@ -3,6 +3,7 @@ package collector
 import (
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/mengbin92/wallet/internal/wallet"
 
@@ -43,7 +44,15 @@ func CollectTokens(rpcURL, mainKeystoreDir, keystoreDir, password, tokenAddr, ta
 
 		logger.Printf("collecting from %s, balance=%s", addr, new(big.Int).Div(balance, DECIMALS).String())
 
-		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, mainKey[0].PrivateKey, logger)
+		// Use default confirmation config for serial mode
+		confirmCfg := &WaitForConfirmationConfig{
+			RequiredConfirmations: DefaultRequiredConfirmations,
+			CheckInterval:         3 * time.Second,
+			MaxWaitTime:           60 * time.Second,
+			ProgressInterval:      5,
+		}
+
+		tx, err := TransferToken(client, key, password, tokenAddr, targetAddr, mainKey[0].PrivateKey, logger, confirmCfg)
 		if err != nil {
 			logger.Printf("transfer from %s failed: %v", addr, err)
 			continue

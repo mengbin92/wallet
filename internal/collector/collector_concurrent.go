@@ -143,19 +143,22 @@ func collectWithWorkerPool(client *ethclient.Client, keys []*keystore.Key, gasPa
 
 			// Execute transfer with retry
 			err := retry.WithExponentialBackoff(func() error {
-				tx, err := TransferToken(client, t.key, password, tokenAddr, targetAddr, gasPayerKey, logger)
+				// Prepare confirmation config
+				confirmCfg := &WaitForConfirmationConfig{
+					RequiredConfirmations: cfg.Confirmation.TokenTransfer,
+					CheckInterval:         cfg.Confirmation.CheckInterval,
+					MaxWaitTime:           cfg.Confirmation.MaxWaitTime,
+					ProgressInterval:      cfg.Confirmation.ProgressInterval,
+				}
+
+				tx, err := TransferToken(client, t.key, password, tokenAddr, targetAddr, gasPayerKey, logger, confirmCfg)
 				if err != nil {
 					return err
 				}
 				result.TxHash = tx.Hash().Hex()
 
 				// Wait for confirmation
-				return WaitForTransactionConfirmation(client, tx.Hash(), &WaitForConfirmationConfig{
-					RequiredConfirmations: cfg.Confirmation.TokenTransfer,
-					CheckInterval:         cfg.Confirmation.CheckInterval,
-					MaxWaitTime:           cfg.Confirmation.MaxWaitTime,
-					ProgressInterval:      cfg.Confirmation.ProgressInterval,
-				}, logger)
+				return WaitForTransactionConfirmation(client, tx.Hash(), confirmCfg, logger)
 			}, &retry.Config{MaxRetries: cfg.Network.MaxRetries, BaseDelay: cfg.Network.RetryBaseDelay})
 
 			if err != nil {

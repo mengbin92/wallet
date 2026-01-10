@@ -197,7 +197,7 @@ func TransferBNB(client *ethclient.Client, priv *ecdsa.PrivateKey, to common.Add
 }
 
 // EnsureGasFee 确保 fromAddr 有足够的主币支付一次 ERC20 转账 Gas
-func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer common.Address, payerPriv *ecdsa.PrivateKey, logger *log.Logger) error {
+func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer common.Address, payerPriv *ecdsa.PrivateKey, logger *log.Logger, cfg *WaitForConfirmationConfig) error {
 	// 保守估算：ERC20 转账一般 gasLimit ~ 65,000 (包含20%缓冲)
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -221,9 +221,9 @@ func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer
 		return errors.Wrap(err, "failed to transfer gas fee")
 	}
 
-	// 等待BNB转账确认，最多等待60秒
+	// 使用传入的配置等待BNB转账确认
 	logger.Printf("等待BNB转账确认: %s", tx.Hash().Hex())
-	err = WaitForTransactionConfirmationSimple(client, tx.Hash(), 60*time.Second, logger)
+	err = WaitForTransactionConfirmation(client, tx.Hash(), cfg, logger)
 	if err != nil {
 		return errors.Wrap(err, "BNB转账确认超时或失败")
 	}
@@ -232,7 +232,7 @@ func EnsureGasFee(client *ethclient.Client, tokenAddr string, fromAddr, gasPayer
 }
 
 // TransferToken 构造并发送 ERC20 转账交易
-func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAddr, to string, gasPayerPriv *ecdsa.PrivateKey, logger *log.Logger) (*types.Transaction, error) {
+func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAddr, to string, gasPayerPriv *ecdsa.PrivateKey, logger *log.Logger, confirmCfg *WaitForConfirmationConfig) (*types.Transaction, error) {
 	privKey := ks.PrivateKey
 	fromAddr := crypto.PubkeyToAddress(privKey.PublicKey)
 	toAddr := common.HexToAddress(to)
@@ -300,9 +300,18 @@ func TransferToken(client *ethclient.Client, ks *keystore.Key, password, tokenAd
 			return nil, errors.Wrap(err, "failed to transfer gas fee")
 		}
 
-		// 等待BNB转账确认，最多等待60秒
+		// 使用传入的配置等待BNB转账确认
 		logger.Printf("等待Gas费用差额转账确认: %s", tx.Hash().Hex())
-		err = WaitForTransactionConfirmationWithBlocks(client, tx.Hash(), DefaultRequiredConfirmations, 60*time.Second, logger)
+		if confirmCfg == nil {
+			// 默认配置：6个确认，60秒超时
+			confirmCfg = &WaitForConfirmationConfig{
+				RequiredConfirmations: DefaultRequiredConfirmations,
+				CheckInterval:         3 * time.Second,
+				MaxWaitTime:           60 * time.Second,
+				ProgressInterval:      5,
+			}
+		}
+		err = WaitForTransactionConfirmation(client, tx.Hash(), confirmCfg, logger)
 		if err != nil {
 			return nil, errors.Wrap(err, "Gas费用差额转账确认超时或失败")
 		}
